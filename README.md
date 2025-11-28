@@ -17,28 +17,47 @@ A Python-based simulation environment for Mahjong (Hong Kong Old Style variants)
 
 ## System Architecture & Concepts
 
-### 1. State Representation (Observation Space)
-The complex game state is encoded into a **`(33, 34)` floating-point tensor**, optimized for neural networks (like CNNs) to process:
-*   **Dimensions**: 33 Feature Channels × 34 Unique Tile Types.
-*   **34 Columns**: Represent the 34 distinct tiles (Characters 1-9, Bamboo 1-9, Dots 1-9, Winds E/S/W/N, Dragons R/G/W).
-*   **33 Channels**: Binary planes capturing specific information, such as:
-    *   **Hand Composition**: Which tiles are currently in the agent's hand (one-hot encoded for count).
-    *   **Public Information**: Open Melds (Pong/Kong/Chow) of all players.
-    *   **Discard History**: What has been played on the table (crucial for defensive play).
-    *   **Game Context**: Dealer status, current Table Wind, and "Riichi" status (Tenpai).
+### 1. Environment Frameworks
 
-### 2. Decision Making (Action Space)
+This project utilizes two distinct frameworks to support different training paradigms:
+
+-   **Gymnasium (`mahjong/env.py`)**:
+    -   **Purpose**: Single-Agent RL.
+    -   **Setup**: The RL agent controls Player 0, while Players 1-3 are controlled by internal scripts (random or heuristic bots).
+    -   **Use Case**: Initial debugging, sanity checks, and learning basic mechanics without the instability of multi-agent dynamics.
+
+-   **PettingZoo (`mahjong/pettingzoo_env.py`)**:
+    -   **Purpose**: Multi-Agent RL (MARL).
+    -   **Setup**: The RL policy controls **all 4 players** simultaneously.
+    -   **Use Case**: Self-play training. This allows the agent to learn advanced strategies by playing against copies of itself, creating an "arms race" of capability. We use the `ParallelEnv` API for compatibility with high-performance vectorization tools.
+
+### 2. State Representation (Observation Space)
+
+The complex game state is encoded into a **`(33, 34)` floating-point tensor**, optimized for neural networks (like CNNs) to process:
+
+-   **Dimensions**: 33 Feature Channels × 34 Unique Tile Types.
+-   **34 Columns**: Represent the 34 distinct tiles (Characters 1-9, Bamboo 1-9, Dots 1-9, Winds E/S/W/N, Dragons R/G/W).
+-   **33 Channels**: Binary planes capturing specific information, such as:
+    -   **Hand Composition**: Which tiles are currently in the agent's hand (one-hot encoded for count).
+    -   **Public Information**: Open Melds (Pong/Kong/Chow) of all players.
+    -   **Discard History**: What has been played on the table (crucial for defensive play).
+    -   **Game Context**: Dealer status, current Table Wind, and "Riichi" status (Tenpai).
+
+### 3. Decision Making (Action Space)
+
 The agent interacts with the game via **42 Discrete Actions**:
-*   **Actions 0-33 (Discard)**: Discard a specific tile corresponding to the 34 tile types.
-*   **Action 34 (Skip)**: Pass priority (decline to call Chow/Pong/Kong).
-*   **Actions 35-41 (Declarations)**: Specific calls for Chow (Low/Mid/High), Pong, Kong, Self-Kong, and Win.
+
+-   **Actions 0-33 (Discard)**: Discard a specific tile corresponding to the 34 tile types.
+-   **Action 34 (Skip)**: Pass priority (decline to call Chow/Pong/Kong).
+-   **Actions 35-41 (Declarations)**: Specific calls for Chow (Low/Mid/High), Pong, Kong, Self-Kong, and Win.
 
 **Action Masking**: The environment calculates a validity mask at every step. This prevents the agent from making illegal moves (e.g., discarding a tile it doesn't hold), significantly speeding up the learning process.
 
-### 3. Multi-Agent Reinforcement Learning (MARL)
-*   **Self-Play with Parameter Sharing**: The training script (`train.py`) uses a single Neural Network (PPO Policy) to control **all 4 players**. The AI learns by playing against copies of itself, evolving from random moves to strategic play.
-*   **Full Rotation Episodes**: A Mahjong match isn't just one hand. The environment simulates a **Full Rotation** (East Round → South Round → West Round → North Round), comprising 16+ individual hands. This forces the agent to consider long-term score preservation.
-*   **Tournament Rewards**: Instead of just rewarding +1 for a win, the environment assigns **Sparse Rewards** at the very end of the rotation based on final rank (e.g., 1st place: +100, 4th place: -100). This encourages playing to win the *match*, not just the hand.
+### 4. Multi-Agent Reinforcement Learning (MARL)
+
+-   **Self-Play with Parameter Sharing**: The training script (`train.py`) uses a single Neural Network (PPO Policy) to control **all 4 players**. The AI learns by playing against copies of itself, evolving from random moves to strategic play.
+-   **Full Rotation Episodes**: A Mahjong match isn't just one hand. The environment simulates a **Full Rotation** (East Round → South Round → West Round → North Round), comprising 16+ individual hands. This forces the agent to consider long-term score preservation.
+-   **Tournament Rewards**: Instead of just rewarding +1 for a win, the environment assigns **Sparse Rewards** at the very end of the rotation based on final rank (e.g., 1st place: +100, 4th place: -100). This encourages playing to win the _match_, not just the hand.
 
 ## Usage
 
@@ -51,6 +70,7 @@ python train.py
 ```
 
 This script will:
+
 1.  Initialize the `MahjongPettingZooEnv`.
 2.  Wrap it using `SuperSuit` to vectorize the 4-player parallel environment.
 3.  Train a PPO agent via `Stable Baselines3`.
@@ -73,6 +93,7 @@ pip install -r requirements.txt
 ```
 
 Dependencies include:
+
 -   `numpy`
 -   `gymnasium`
 -   `pettingzoo`
