@@ -222,7 +222,8 @@ class Game:
                     if can_win and player.wants_to_win(self.min_points_to_win):
                         player.declare_discard_win(
                             most_recent_discard, discarder_idx)
-                        self.log_action(ActionType.WIN, player.seat_index, most_recent_discard)
+                        self.log_action(
+                            ActionType.WIN, player.seat_index, most_recent_discard)
                         win_claimed = True
                         winner_seat_index = player.seat_index
                         # First valid claim wins (Head Bump rule).
@@ -255,7 +256,9 @@ class Game:
                 if turn_ended:
                     if winner_idx is not None:
                         winner_seat_index = winner_idx
-                        self.log_action(ActionType.WIN, winner_idx, self.action_log[-1].tile if self.action_log else None) # Log win on self-draw
+                        # Log win on self-draw
+                        self.log_action(
+                            ActionType.WIN, winner_idx, self.action_log[-1].tile if self.action_log else None)
 
                     # Game ended.
                     if self.is_game_over() or winner_seat_index is not None:
@@ -270,7 +273,9 @@ class Game:
                 discarded_tile = current_player.discard_tile(tile_to_discard)
 
                 self.discards.append(discarded_tile)
-                self.log_action(ActionType.DISCARD, current_player.seat_index, discarded_tile)
+                # We attach the discard to the last action in the log
+                if self.action_log:
+                    self.action_log[-1].discard_tile = discarded_tile
 
             # 5. Next Turn.
             active_player_idx = (active_player_idx + 1) % 4
@@ -320,7 +325,8 @@ class Game:
                 return True, None
 
             current_player.draw_tile(drawn_tile)
-            self.log_action(ActionType.DRAW, current_player.seat_index, drawn_tile)
+            self.log_action(ActionType.DRAW,
+                            current_player.seat_index, drawn_tile)
 
             # Determine potential win condition based on consecutive kongs
             current_win_condition = WinCondition.WIN_FROM_SELF_DRAW
@@ -353,7 +359,8 @@ class Game:
                 # Since we don't track original Pong source yet, we'll assume self-draw payment for now.
 
                 current_player.declare_self_kong(drawn_tile)
-                self.log_action(ActionType.KONG, current_player.seat_index, drawn_tile)
+                self.log_action(ActionType.KONG,
+                                current_player.seat_index, drawn_tile)
                 consecutive_kongs += 1
                 continue
 
@@ -383,14 +390,16 @@ class Game:
             if player.can_kong(most_recent_discard) and player.wants_to_kong(most_recent_discard):
                 player.declare_kong(most_recent_discard)
                 self.discards.pop()  # The discarded tile is taken by the player who Kong'd
-                self.log_action(ActionType.KONG, player.seat_index, most_recent_discard)
+                self.log_action(ActionType.KONG,
+                                player.seat_index, most_recent_discard)
                 return True, player.seat_index
 
             # If no Kong, check for Pong
             elif player.can_pong(most_recent_discard) and player.wants_to_pong(most_recent_discard):
                 player.declare_pong(most_recent_discard)
                 self.discards.pop()  # The discarded tile is taken by the player who Pong'd
-                self.log_action(ActionType.PONG, player.seat_index, most_recent_discard)
+                self.log_action(ActionType.PONG,
+                                player.seat_index, most_recent_discard)
                 return True, player.seat_index
         return False, None
 
@@ -404,7 +413,8 @@ class Game:
         if current_player.can_chow(most_recent_discard, discarding_player_index) and current_player.wants_to_chow(most_recent_discard):
             current_player.declare_chow(most_recent_discard)
             self.discards.pop()  # The chowed tile is removed from discards.
-            self.log_action(ActionType.CHOW, current_player.seat_index, most_recent_discard)
+            self.log_action(ActionType.CHOW,
+                            current_player.seat_index, most_recent_discard)
             return True
         return False
 

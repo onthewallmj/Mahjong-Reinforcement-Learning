@@ -8,7 +8,6 @@ class ActionType(Enum):
     Each action type is associated with a specific Mahjong game action.
     """
     DRAW = "draw"
-    DISCARD = "discard"
     CHOW = "chow"
     PONG = "pong"
     KONG = "kong"
