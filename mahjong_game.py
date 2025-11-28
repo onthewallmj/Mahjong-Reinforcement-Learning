@@ -199,7 +199,7 @@ class MahjongGame:
                     can_win = player.can_win(
                         min_points_to_win=self.min_points_to_win,
                         table_wind=self.table_wind,
-                        win_condition=WinCondition.DISCARD,
+                        win_condition=WinCondition.WIN_FROM_DISCARD,
                         is_last_tile=is_last_tile,
                         new_tile=most_recent_discard
                     )
