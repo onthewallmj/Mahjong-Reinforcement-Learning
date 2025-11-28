@@ -85,6 +85,7 @@ class HandScorer:
         table_wind: Wind,
         win_condition: WinCondition,
         is_last_tile: bool,
+        consecutive_kongs: int = 0,
     ) -> list[PointSource]:
         """
         Evaluates a Mahjong hand and returns a list of all point sources (fan) achieved.
@@ -108,7 +109,7 @@ class HandScorer:
         points.extend(cls._score_winds(tiles, seat_wind, table_wind))
         points.extend(cls._score_orphan_patterns(tiles))
         points.extend(cls._score_win_conditions(
-            win_condition, hand, melds, is_last_tile))
+            win_condition=win_condition, has_no_melds=len(melds) == 0, is_last_tile=is_last_tile, consecutive_kongs=consecutive_kongs))
         return points
 
     # -------------------------------------------------------------------------
@@ -307,7 +308,7 @@ class HandScorer:
         return points
 
     @staticmethod
-    def _score_win_conditions(win_condition: WinCondition, hand: list[Tile], melds: list[Meld], is_last_tile: bool) -> list[PointSource]:
+    def _score_win_conditions(win_condition: WinCondition, has_no_melds: bool, is_last_tile: bool, consecutive_kongs: int) -> list[PointSource]:
         """
         Calculates points derived specifically from how the hand was won (e.g., self-draw).
         """
@@ -316,11 +317,16 @@ class HandScorer:
         if win_condition == WinCondition.WIN_FROM_SELF_DRAW:
             points.append(PointSource.self_draw())
 
-        if not melds:
+        if has_no_melds:
             points.append(PointSource.win_from_wall())
 
         if is_last_tile:
             points.append(PointSource.win_by_last_catch())
+
+        if consecutive_kongs == 1:
+            points.append(PointSource.win_by_kong())
+        elif consecutive_kongs == 2:
+            points.append(PointSource.win_by_double_kong())
 
         return points
 

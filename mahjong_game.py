@@ -190,10 +190,13 @@ class MahjongGame:
             # 1. Check reactions to discard (Win/Kong/Pong).
             if most_recent_discard is not None:
                 win_claimed = False
-                for player in self.players:
-                    # Cannot win on own discard.
-                    if player.seat_index == (active_player_idx - 1 + 4) % 4:
-                        continue
+                discarder_idx = (active_player_idx - 1 + 4) % 4
+
+                # Check for wins in turn order starting from the player to the right of the discarder.
+                # This ensures "Head Bump" priority (nearest player in turn order wins).
+                for offset in range(1, 4):
+                    seat_idx = (discarder_idx + offset) % 4
+                    player = self.players[seat_idx]
 
                     is_last_tile = len(self.tiles) == 0
                     can_win = player.can_win(
@@ -206,10 +209,10 @@ class MahjongGame:
 
                     if can_win and player.wants_to_win(self.min_points_to_win):
                         player.declare_discard_win(
-                            most_recent_discard, (active_player_idx - 1 + 4) % 4)
+                            most_recent_discard, discarder_idx)
                         win_claimed = True
                         winner_seat_index = player.seat_index
-                        # First valid claim wins (simplified rule).
+                        # First valid claim wins (Head Bump rule).
                         break
 
                 if win_claimed:
@@ -292,6 +295,7 @@ class MahjongGame:
         Returns (True, winner_seat_index) if the turn ends immediately (due to Win or Draw),
         otherwise (False, None) if the player should proceed to discard.
         """
+        consecutive_kongs = 0
         while True:
             # 1. Draw a tile (handling bonus tiles automatically).
             drawn_tile = self._draw_and_replace_bonus_tiles(current_player)
@@ -302,12 +306,20 @@ class MahjongGame:
 
             current_player.draw_tile(drawn_tile)
 
+            # Determine potential win condition based on consecutive kongs
+            current_win_condition = WinCondition.WIN_FROM_SELF_DRAW
+            if consecutive_kongs == 1:
+                current_win_condition = WinCondition.WIN_FROM_KONG
+            elif consecutive_kongs >= 2:
+                current_win_condition = WinCondition.WIN_FROM_DOUBLE_KONG
+
             # 3. Check for Self-Draw Win.
             is_last_tile = len(self.tiles) == 0
-            if current_player.can_win(min_points_to_win=self.min_points_to_win, table_wind=self.table_wind, is_last_tile=is_last_tile) and current_player.wants_to_win(
+            if current_player.can_win(min_points_to_win=self.min_points_to_win, table_wind=self.table_wind, win_condition=current_win_condition, is_last_tile=is_last_tile) and current_player.wants_to_win(
                     min_points_to_win=self.min_points_to_win):
 
-                current_player.declare_self_draw_win(drawn_tile)
+                current_player.declare_self_draw_win(
+                    drawn_tile, win_condition=current_win_condition)
                 return True, current_player.seat_index
 
             # 4. Check for Self-Kong.
@@ -315,6 +327,7 @@ class MahjongGame:
             # This handles chained kongs (Draw -> Kong -> Draw -> Kong).
             if current_player.can_self_kong(drawn_tile) and current_player.wants_to_self_kong(drawn_tile):
                 current_player.declare_self_kong(drawn_tile)
+                consecutive_kongs += 1
                 continue
 
             # 5. Proceed to Discard Phase (no win or kong).
@@ -474,7 +487,11 @@ class MahjongGame:
             for win in player.wins:
                 win_score = win.calculate_score(self.max_point_limit)
 
-                if win.win_condition == WinCondition.WIN_FROM_SELF_DRAW:
+                if win.win_condition in [
+                    WinCondition.WIN_FROM_SELF_DRAW,
+                    WinCondition.WIN_FROM_KONG,
+                    WinCondition.WIN_FROM_DOUBLE_KONG
+                ]:
                     # Self-draw: All other players pay
                     for other_idx, other_player in enumerate(self.players):
                         if other_idx != player_idx:

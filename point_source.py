@@ -63,7 +63,7 @@ class PointSource:
 
     @staticmethod
     def sever_pairs() -> "PointSource":
-        return PointSource(PointType.SEVER_PAIRS, 4)
+        return PointSource(PointType.SEVER_PAIRS, 3)
 
     @staticmethod
     def mixed_one_suit() -> "PointSource":

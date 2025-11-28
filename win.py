@@ -28,6 +28,10 @@ class WinCondition(Enum):
     WIN_FROM_SELF_DRAW = 0
     # Win by claiming a tile discarded by another player.
     WIN_FROM_DISCARD = 1
+    # Win by drawing a replacement tile after a Kong.
+    WIN_FROM_KONG = 2
+    # Win by drawing a replacement tile after two consecutive Kongs.
+    WIN_FROM_DOUBLE_KONG = 3
 
 
 class Win:
@@ -59,12 +63,12 @@ class Win:
         return win
 
     @staticmethod
-    def create_self_draw_win(winning_tile: Tile, hand_tiles: list[Tile], bonus_tiles: list[Tile], point_sources: list[PointSource]):
+    def create_self_draw_win(winning_tile: Tile, hand_tiles: list[Tile], bonus_tiles: list[Tile], point_sources: list[PointSource], win_condition: WinCondition = WinCondition.WIN_FROM_SELF_DRAW):
         """
         Creates a Win object representing a self-draw win.
         """
         win = Win(winning_tile, hand_tiles,
-                  bonus_tiles, point_sources, WinCondition.WIN_FROM_SELF_DRAW)
+                  bonus_tiles, point_sources, win_condition)
         return win
 
     def get_points(self) -> int:
@@ -81,4 +85,15 @@ class Win:
         points_to_lookup = min(total_points, max_point_limit)
         # Default to 0 if not found, though all standard points should be in the map up to 13.
         base_score = POINT_TO_SCORE_MAP.get(points_to_lookup, 0)
-        return int(base_score * 1.5) if self.win_condition == WinCondition.WIN_FROM_SELF_DRAW else base_score
+
+        # Check if it is any type of self-draw win
+        is_self_draw = self.win_condition in [
+            WinCondition.WIN_FROM_SELF_DRAW,
+            WinCondition.WIN_FROM_KONG,
+            WinCondition.WIN_FROM_DOUBLE_KONG
+        ]
+
+        return int(base_score * 1.5) if is_self_draw else base_score
+
+    def get_total_points(self) -> int:
+        return sum(p.value for p in self.point_sources)

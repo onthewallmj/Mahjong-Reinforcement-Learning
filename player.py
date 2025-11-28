@@ -429,7 +429,7 @@ class Player:
         self.sort_hand()
         return tile_to_discard
 
-    def declare_self_draw_win(self, winning_tile: Tile):
+    def declare_self_draw_win(self, winning_tile: Tile, win_condition: WinCondition = WinCondition.WIN_FROM_SELF_DRAW):
         """
         Record a self-drawn win for the player.
         """
@@ -439,6 +439,7 @@ class Player:
                 hand_tiles=self.gameState.hand,
                 bonus_tiles=self.gameState.bonus_tiles,
                 point_sources=[],
+                win_condition=win_condition,
             )
         )
 
