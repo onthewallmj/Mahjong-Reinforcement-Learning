@@ -65,8 +65,7 @@ class Game:
         for player in self.players:
             player.sort_hand()
 
-        print(f"Game #{self.get_game_count() + 1}")
-        self.display_player_hands()
+        print(f"Starting Game #{self.get_game_count() + 1}...")
 
     def reset_player_game_states(self):
         """
@@ -588,11 +587,3 @@ class Game:
                         if other_idx != player_idx:
                             other_player.score -= win_score
                             player.score += win_score
-
-    def display_player_hands(self):
-        for idx, player in enumerate(self.players, 1):
-            print(f"Player {idx}'s Hand:")
-            player.display_hand()
-            print(f"Player {idx}'s Bonus Tiles:")
-            player.display_bonus_tiles()
-            print()
