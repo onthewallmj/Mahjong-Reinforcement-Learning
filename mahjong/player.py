@@ -497,9 +497,14 @@ class Player:
 
     def display_hand(self) -> None:
         """
-        Display the player's hand tiles in a readable string format.
+        Display the player's hand tiles and melds in a readable string format.
         """
-        print(", ".join([str(tile) for tile in self.hand]))
+        hand_str = ", ".join([str(tile) for tile in self.hand])
+        melds_str = ""
+        if self.gameState.melds:
+             melds_str = " | Melds: " + ", ".join([str(meld) for meld in self.gameState.melds])
+        
+        print(hand_str + melds_str)
 
     def display_bonus_tiles(self) -> None:
         """
