@@ -108,13 +108,33 @@ class HandScorer:
         points.extend(cls._score_dragons(tiles))
         points.extend(cls._score_winds(tiles, seat_wind, table_wind))
         points.extend(cls._score_orphan_patterns(tiles))
+
+        # Determine if special hands (Seven Pairs or Thirteen Orphans) are present
         points.extend(cls._score_win_conditions(
-            win_condition=win_condition, has_no_melds=len(melds) == 0, is_last_tile=is_last_tile, consecutive_kongs=consecutive_kongs))
+            win_condition=win_condition,
+            has_no_melds=len(melds) == 0,
+            is_last_tile=is_last_tile,
+            consecutive_kongs=consecutive_kongs,
+            is_ineligible_for_win_from_wall=cls._is_ineligible_for_win_from_wall(
+                melds, tiles)
+        ))
         return points
 
     # -------------------------------------------------------------------------
     # High-Level Helper
     # -------------------------------------------------------------------------
+
+    @classmethod
+    def _is_ineligible_for_win_from_wall(cls, melds: list[Meld], tiles: list[Tile]) -> bool:
+        """
+        Checks if the hand matches any pattern that typically excludes standard "Win from Wall" points.
+        """
+        return (
+            cls._is_seven_pairs(melds, tiles) or
+            cls._is_thirteen_orphans(tiles) or
+            cls._is_nine_gates(tiles) or
+            cls._is_self_triplets(melds, tiles)
+        )
 
     @staticmethod
     def _collect_tiles(hand: list[Tile], melds: list[Meld]) -> list[Tile]:
@@ -308,7 +328,7 @@ class HandScorer:
         return points
 
     @staticmethod
-    def _score_win_conditions(win_condition: WinCondition, has_no_melds: bool, is_last_tile: bool, consecutive_kongs: int) -> list[PointSource]:
+    def _score_win_conditions(win_condition: WinCondition, has_no_melds: bool, is_last_tile: bool, consecutive_kongs: int, is_ineligible_for_win_from_wall: bool) -> list[PointSource]:
         """
         Calculates points derived specifically from how the hand was won (e.g., self-draw).
         """
@@ -317,7 +337,8 @@ class HandScorer:
         if win_condition == WinCondition.WIN_FROM_SELF_DRAW:
             points.append(PointSource.self_draw())
 
-        if has_no_melds:
+        # Win From Wall (Concealed Hand) is mutually exclusive with special hands like Seven Pairs or Thirteen Orphans
+        if has_no_melds and not is_ineligible_for_win_from_wall:
             points.append(PointSource.win_from_wall())
 
         if is_last_tile:
