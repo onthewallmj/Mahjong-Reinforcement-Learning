@@ -1,5 +1,6 @@
 from enum import Enum, auto
 
+
 class Phase(Enum):
     """
     Represents the current phase of the game loop.
@@ -8,4 +9,3 @@ class Phase(Enum):
     DISCARD = auto()
     REACTION = auto()
     GAME_OVER = auto()
-

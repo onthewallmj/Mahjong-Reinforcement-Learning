@@ -82,21 +82,21 @@ class Tile:
 
         if self.suit == TileSuit.CHARACTER:
             return int(self.value) - 1
-        
+
         if self.suit == TileSuit.BAMBOO:
             return int(self.value) - 1 + 9
-        
+
         if self.suit == TileSuit.DOT:
             return int(self.value) - 1 + 18
-        
+
         if self.suit == TileSuit.HONOR:
-            if isinstance(self.value, int): # WindValue constant
+            if isinstance(self.value, int):  # WindValue constant
                 return 27 + self.value
             if isinstance(self.value, DragonValue):
                 return 31 + self.value.value
             # If value is already mapped or unknown
             pass
-            
+
         raise ValueError(f"Cannot map tile {self} to index 34")
 
     def __eq__(self, otherTile):

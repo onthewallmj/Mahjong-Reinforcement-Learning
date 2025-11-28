@@ -174,6 +174,12 @@ class Player:
         A Chow can only be declared by the next player in turn order, and only
         on a suited numbered tile (Character, Bamboo, or Dot).
         """
+        # Constraint: Cannot Call if it leaves no tile to discard (Hand too small)
+        # Minimal valid hand size to Call is 4 (e.g. 3 melds, 4 tiles -> Call -> 2 tiles -> Discard -> 1 tile).
+        # If hand is 1 (4 melds), cannot Call.
+        if len(self.gameState.hand) < 4:
+            return False
+
         # Ensure this player is the next in turn order relative to the discarder.
         if (self.gameState.seatWind.value - discarding_player_index) % 4 != 1:
             return False
@@ -227,6 +233,9 @@ class Player:
 
         A Pong can be declared if the player has two identical tiles in hand.
         """
+        if len(self.gameState.hand) < 4:
+            return False
+
         if not discarded_tile:
             return False
         return self.gameState.hand.count(discarded_tile) >= 2
@@ -237,6 +246,9 @@ class Player:
 
         A Kong can be declared if the player has three identical tiles in hand.
         """
+        if len(self.gameState.hand) < 4:
+            return False
+
         if not discarded_tile:
             return False
         return self.gameState.hand.count(discarded_tile) >= 3
@@ -502,8 +514,9 @@ class Player:
         hand_str = ", ".join([str(tile) for tile in self.hand])
         melds_str = ""
         if self.gameState.melds:
-             melds_str = " | Melds: " + ", ".join([str(meld) for meld in self.gameState.melds])
-        
+            melds_str = " | Melds: " + \
+                ", ".join([str(meld) for meld in self.gameState.melds])
+
         print(hand_str + melds_str)
 
     def display_bonus_tiles(self) -> None:

@@ -11,6 +11,7 @@ from .win import WinCondition
 from .action_log import ActionLog, ActionLogType
 from .phase import Phase
 
+
 class Game:
 
     def __init__(self, min_points_to_win: int = 3, max_point_limit: int = 13):
@@ -35,7 +36,7 @@ class Game:
         self.history: list[GameHistory] = []
         # List of players.
         self.players: list[Player] = self.initialize_players()
-        
+
         # State Machine Variables
         self.current_player_idx: int = 0
         self.should_draw: bool = True
@@ -73,7 +74,7 @@ class Game:
             player.sort_hand()
 
         print(f"Starting Game #{self.get_game_count() + 1}...")
-        
+
         # Initialize State Machine
         self.current_player_idx = self.dealer_index
         self.should_draw = True
@@ -204,11 +205,11 @@ class Game:
         Runs the entire game from start to finish (Blocking).
         """
         self.initialize_game()
-        
+
         while not self.are_tiles_exhausted() and self.phase != Phase.GAME_OVER:
             # Execute one step of the game logic
             self.step()
-            
+
             if self.phase == Phase.GAME_OVER:
                 break
 
@@ -219,7 +220,7 @@ class Game:
         Advances the game state by one atomic step.
         This method is designed to be called repeatedly by an external loop (Game.play)
         or by an RL environment wrapper.
-        
+
         :param external_action: Optional tuple (ActionType_Int, Target_Tile) to force the current player's move.
                                 Used when the current player is controlled by an agent.
         """
@@ -232,7 +233,8 @@ class Game:
         if self.phase == Phase.DRAW:
             if self.should_draw:
                 self.move_index += 1
-                turn_ended, winner_idx = self._handle_draw_phase(current_player)
+                turn_ended, winner_idx = self._handle_draw_phase(
+                    current_player)
                 if turn_ended:
                     if winner_idx is not None:
                         self.winner_seat_index = winner_idx
@@ -243,7 +245,7 @@ class Game:
                             print(self.action_log[-1])
                     self.phase = Phase.GAME_OVER
                     return
-                
+
                 # If not ended, proceed to discard
                 self.phase = Phase.DISCARD
             else:
@@ -255,12 +257,13 @@ class Game:
         # --- DISCARD PHASE ---
         if self.phase == Phase.DISCARD:
             if not current_player.hand:
-                raise ValueError(f"Player {current_player.seat_index} has no tiles to discard!")
+                raise ValueError(
+                    f"Player {current_player.seat_index} has no tiles to discard!")
 
             tile_to_discard = None
-            
+
             # Use external action if provided and valid
-            if external_action and external_action[1]: 
+            if external_action and external_action[1]:
                 # Check if it's a discard action?
                 # For simplified integration, we assume if external_action is passed during DISCARD phase,
                 # the tile component IS the tile to discard.
@@ -268,7 +271,7 @@ class Game:
                 tile_to_discard = external_action[1]
             else:
                 tile_to_discard = current_player.determine_tile_to_discard()
-            
+
             discarded_tile = current_player.discard_tile(tile_to_discard)
             self.discards.append(discarded_tile)
 
@@ -284,7 +287,7 @@ class Game:
         if self.phase == Phase.REACTION:
             most_recent_discard = self.discards[-1] if self.discards else None
             discarder_idx = self.current_player_idx
-            
+
             # 1. Check Win
             win_claimed = False
             for offset in range(1, 4):
@@ -300,8 +303,10 @@ class Game:
                 )
 
                 if can_win and player.wants_to_win(self.min_points_to_win):
-                    player.declare_discard_win(most_recent_discard, discarder_idx)
-                    self.log_action(ActionLogType.WIN, player.seat_index, most_recent_discard)
+                    player.declare_discard_win(
+                        most_recent_discard, discarder_idx)
+                    self.log_action(ActionLogType.WIN,
+                                    player.seat_index, most_recent_discard)
                     print(self.action_log[-1])
                     self.winner_seat_index = player.seat_index
                     self.phase = Phase.GAME_OVER
@@ -322,12 +327,12 @@ class Game:
                     last_action = self.action_log[-1]
                     if last_action.action == ActionLogType.KONG:
                         self.should_draw = True
-                        # Kong typically allows a replacement draw immediately. 
+                        # Kong typically allows a replacement draw immediately.
                         # We go back to DRAW phase for the reactor.
-                        self.phase = Phase.DRAW 
+                        self.phase = Phase.DRAW
                     else:  # PONG
                         self.should_draw = False
-                        self.phase = Phase.DISCARD # Pong -> Discard
+                        self.phase = Phase.DISCARD  # Pong -> Discard
                 return
 
             # 3. Check Chow
@@ -344,11 +349,11 @@ class Game:
             self.current_player_idx = (self.current_player_idx + 1) % 4
             self.should_draw = True
             self.phase = Phase.DRAW
-            
+
             # Check for wall exhaustion at the start of next turn logic (or end of this one)
             if self.are_tiles_exhausted():
                 self.phase = Phase.GAME_OVER
-            
+
             return
 
     def finalize_game(self, winner_seat_index: int | None):
