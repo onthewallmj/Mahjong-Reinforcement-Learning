@@ -348,7 +348,7 @@ class HandScorer:
 
         if consecutive_kongs == 1:
             points.append(PointSource.win_by_kong())
-        elif consecutive_kongs == 2:
+        elif consecutive_kongs >= 2:
             points.append(PointSource.win_by_double_kong())
 
         return points
