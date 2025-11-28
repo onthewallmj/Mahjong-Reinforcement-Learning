@@ -22,6 +22,7 @@ A Python-based simulation environment for Mahjong (Hong Kong Old Style variants)
 This project utilizes two distinct frameworks to support different training paradigms:
 
 -   **Gymnasium (`mahjong/env.py`)**:
+
     -   **Purpose**: Single-Agent RL.
     -   **Setup**: The RL agent controls Player 0, while Players 1-3 are controlled by internal scripts (random or heuristic bots).
     -   **Use Case**: Initial debugging, sanity checks, and learning basic mechanics without the instability of multi-agent dynamics.
@@ -57,7 +58,20 @@ The agent interacts with the game via **42 Discrete Actions**:
 
 -   **Self-Play with Parameter Sharing**: The training script (`train.py`) uses a single Neural Network (PPO Policy) to control **all 4 players**. The AI learns by playing against copies of itself, evolving from random moves to strategic play.
 -   **Full Rotation Episodes**: A Mahjong match isn't just one hand. The environment simulates a **Full Rotation** (East Round → South Round → West Round → North Round), comprising 16+ individual hands. This forces the agent to consider long-term score preservation.
--   **Tournament Rewards**: Instead of just rewarding +1 for a win, the environment assigns **Sparse Rewards** at the very end of the rotation based on final rank (e.g., 1st place: +100, 4th place: -100). This encourages playing to win the _match_, not just the hand.
+
+### 5. Reward Structure
+
+The environment utilizes a **Sparse Tournament Reward** signal to encourage long-term strategic planning over greedy, immediate point accumulation.
+
+-   **Immediate Rewards**: 0. The agent receives no reward for intermediate actions (discards, melding) or even for winning individual hands during the rotation.
+-   **Terminal Rewards**: At the end of the full table rotation (East → North), players are ranked by their total accumulated score.
+-   **Payoff Matrix**:
+    -   **1st Place**: `+100`
+    -   **2nd Place**: `+50`
+    -   **3rd Place**: `-50`
+    -   **4th Place**: `-100`
+
+This structure mimics the actual incentives of competitive Mahjong, where the goal is to finish the match with the highest standing, sometimes requiring players to play defensively to protect a lead or aggressively to close a gap.
 
 ## Usage
 
