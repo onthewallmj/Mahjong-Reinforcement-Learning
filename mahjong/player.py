@@ -172,28 +172,9 @@ class Player:
         if (self.gameState.seatWind.value - discarding_player_index) % 4 != 1:
             return False
 
-        # Chow is only possible on suited numbered tiles.
-        if discarded_tile.suit not in [TileSuit.CHARACTER, TileSuit.BAMBOO, TileSuit.DOT]:
-            return False
-
-        tile_value = discarded_tile.value
-        if not isinstance(tile_value, int):
-            return False
-
-        needed_tiles = [
-            [Tile(discarded_tile.suit, tile_value - 2),
-             Tile(discarded_tile.suit, tile_value - 1)],
-            [Tile(discarded_tile.suit, tile_value - 1),
-             Tile(discarded_tile.suit, tile_value + 1)],
-            [Tile(discarded_tile.suit, tile_value + 1),
-             Tile(discarded_tile.suit, tile_value + 2)],
-        ]
-
-        for tile_pair in needed_tiles:
-            if all(tile in self.gameState.hand for tile in tile_pair):
-                return True
-
-        return False
+        possible_combinations = self.get_possible_chow_combinations(
+            discarded_tile)
+        return len(possible_combinations) > 0
 
     def get_possible_chow_combinations(self, discarded_tile: Tile) -> list[list[Tile]]:
         """
