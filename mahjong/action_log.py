@@ -36,4 +36,4 @@ class ActionLog:
 
     def __repr__(self):
         # Provide a readable string representation of the ActionLog for debugging/logging.
-        return f"Move: {self.move_index + 1} | {self.action.value} by Player {self.player_index + 1} | Inserted: {self.inserted_tile} | Discarded: {self.discarded_tile if self.discarded_tile else 'None'}"
+        return f"Move: {self.move_index} | {self.action.value} by Player {self.player_index + 1} | Inserted: {self.inserted_tile} | Discarded: {self.discarded_tile if self.discarded_tile else 'None'}"
