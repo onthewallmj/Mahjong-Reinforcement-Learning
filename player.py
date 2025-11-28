@@ -2,6 +2,7 @@ from common import Wind
 from meld import Meld
 from tile import Tile, TileSuit
 from win import Win
+from common import Wind
 
 
 class PlayerGameState:
