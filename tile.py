@@ -46,6 +46,31 @@ class Tile:
         self.suit = suit
         self.value = value
 
+    def is_honor(self) -> bool:
+        return self.suit == TileSuit.HONOR
+
+    def is_terminal(self) -> bool:
+        return not self.is_bonus_tile and self.value in [1, 9]
+
+    def is_bonus_tile(self) -> bool:
+        return self.suit in [TileSuit.FLOWER, TileSuit.SEASON]
+
+    def is_mixed_orphan(self) -> bool:
+        """
+        Checks if the tile is a 'mixed orphan' tile.
+        These are terminal tiles (1s and 9s) or honor tiles (winds and dragons).
+        """
+        if self.is_bonus_tile():
+            return False
+
+        if self.is_honor():
+            return True
+
+        if self.value in [1, 9]:
+            return True
+
+        return False
+
     def __eq__(self, otherTile):
         return self.suit == otherTile.suit and self.value == otherTile.value
 
