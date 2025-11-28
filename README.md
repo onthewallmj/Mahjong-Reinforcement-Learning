@@ -1,51 +1,78 @@
 # Mahjong Reinforcement Learning Environment
 
-A Python-based simulation environment for Mahjong, designed for reinforcement learning experiments. This project implements the core mechanics of Mahjong (Hong Kong Old Style variants), including tile dealing, meld mechanics (Pong, Kong, Chow), scoring, and game flow management.
+A Python-based simulation environment for Mahjong (Hong Kong Old Style variants), designed for Multi-Agent Reinforcement Learning (MARL). This project implements the core mechanics of Mahjong, including tile dealing, meld mechanics (Pong, Kong, Chow), scoring, and game flow management, wrapped in standard RL interfaces (Gymnasium and PettingZoo).
 
 ## Project Structure
 
--   **`main.py`**: The entry point for the simulation. Runs a game loop until a full table revolution (East, South, West, North rounds) is completed.
--   **`mahjong/`**: Package containing the core game logic.
-    -   **`game.py`**: Contains the `Game` class, which manages the overall game state, turn logic, dealer rotation, and table wind.
-    -   **`player.py`**: Defines the `Player` class, handling individual player state (hand, melds, score) and decision-making interface.
-    -   **`hand_scorer.py`**: Implements the scoring logic, including checks for standard winning hands (4 sets + 1 pair) and special hands (e.g., Thirteen Orphans).
-    -   **`tile.py`**: Defines the `Tile` class and enums for suits and values.
-    -   **`meld.py`**: Defines the `Meld` class for representing sets of tiles (Chow, Pong, Kong).
-    -   **`game_history.py`**: Tracks the history of played games.
-    -   **`win.py`**: Defines win conditions and score calculation.
-    -   **`point_source.py`**: Manages point values for different scoring elements.
-    -   **`common.py`**: Shared enums and constants (e.g., `Wind`).
+-   **`train.py`**: Script to train a PPO agent using Stable Baselines3 and the PettingZoo environment.
+-   **`main.py`**: A standalone simulation runner for testing the game logic without RL overhead.
+-   **`mahjong/`**: Package containing the core game logic and RL wrappers.
+    -   **`pettingzoo_env.py`**: **(New)** PettingZoo Parallel Environment for 4-player self-play training.
+    -   **`env.py`**: **(New)** Gymnasium Environment for single-agent training against bots.
+    -   **`game.py`**: Manages the game state machine, turn logic, and rules. Refactored to support step-wise execution for RL.
+    -   **`player.py`**: Defines the `Player` class and decision interfaces.
+    -   **`observation.py`**: **(New)** Encodes the game state into a (33, 34) tensor for Neural Networks.
+    -   **`action_space.py`**: **(New)** Defines the discrete action space (0-41).
+    -   **`hand_scorer.py`**: Implements scoring logic and win condition checks.
 
 ## Features
 
--   **Complete Game Loop**: Handles dealing, drawing, discarding, and turn progression.
--   **Meld Support**: Fully supports Chow, Pong, and Kong (including concealed and promoted/self-Kongs).
--   **Scoring System**:
-    -   Detects standard hands (4 melds + 1 pair).
-    -   Supports special hands like Seven Pairs and Thirteen Orphans.
-    -   Calculates points based on hand composition and table rules.
--   **Game Flow**:
-    -   Dealer rotation and retention rules.
-    -   Table wind progression.
-    -   Win on discard and self-draw logic.
-    -   Draw game handling.
+-   **Reinforcement Learning Ready**:
+    -   **PettingZoo Integration**: Supports Multi-Agent training (4 agents) with full rotation episodes.
+    -   **Gymnasium Integration**: Supports Single-Agent training.
+    -   **Tensor Observation**: Efficient state representation for CNNs/MLPs.
+    -   **Action Masking**: Prevents illegal moves to stabilize training.
+    -   **Sparse Rewards**: Supports tournament-style rewards based on final rank.
+-   **Complete Game Engine**:
+    -   Handles all Meld types (Chow, Pong, Kong, Concealed/Promoted Kongs).
+    -   Scoring system for standard and special hands (Thirteen Orphans, Seven Pairs).
+    -   Correct dealer rotation and table wind rules.
 
 ## Usage
 
-Run the simulation by executing `main.py`:
+### Training an Agent (RL)
+
+To train a Mahjong agent using Proximal Policy Optimization (PPO) in a self-play setup:
+
+```bash
+python train.py
+```
+
+This script will:
+1.  Initialize the `MahjongPettingZooEnv`.
+2.  Wrap it for compatibility with Stable Baselines3.
+3.  Train a single policy that controls all 4 players (Parameter Sharing).
+4.  Save the trained model to `mahjong_ppo_model.zip`.
+
+### Running a Simulation (No RL)
+
+To see the game logic in action with random moves:
 
 ```bash
 python main.py
 ```
 
-This will simulate a series of Mahjong games until a full table cycle is complete, printing the final scores of all players.
+## Installation
+
+Install the required dependencies:
+
+```bash
+pip install -r requirements.txt
+```
+
+Dependencies include:
+-   `numpy`
+-   `gymnasium`
+-   `pettingzoo`
+-   `stable-baselines3`
+-   `supersuit`
 
 ## Development Status
 
-The core game logic is implemented, including:
-
--   [x] Tile shuffling and dealing
--   [x] Turn mechanics
--   [x] Valid move generation (Chow, Pong, Kong, Win)
--   [x] Hand scoring and validation
--   [ ] **Policy Implementation**: The `Player` class currently uses placeholder logic for decisions (`wants_to_...` methods). Implementing AI policies (Random, Heuristic, RL-based) is the next step.
+-   [x] Core Game Logic & Scoring
+-   [x] RL Observation & Action Space
+-   [x] Gymnasium Wrapper (Single Agent)
+-   [x] PettingZoo Wrapper (Multi-Agent)
+-   [x] Action Masking (Discard Phase)
+-   [x] Training Pipeline (PPO)
+-   [ ] **Advanced Action Masking**: Currently, agents control Discards. Reaction logic (deciding to Chow/Pong/Kong) uses heuristics or is skipped. Implementing full agent control for reactions is the next major milestone.
