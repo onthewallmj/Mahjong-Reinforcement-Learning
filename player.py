@@ -1,8 +1,7 @@
 from common import Wind
-from meld import Meld
+from meld import Meld, MeldType
 from tile import Tile, TileSuit
-from win import Win
-from common import Wind
+from win import Win, WinCondition
 
 
 class PlayerGameState:
@@ -85,12 +84,55 @@ class Player:
             )
         )
 
+    # -------------------------------------------------------------------------
+    # Strategy / Decision Methods (To be implemented via Policy)
+    # -------------------------------------------------------------------------
+
     def determine_tile_to_discard(self) -> Tile:
         """
         Decide which tile to discard.
         """
         # TODO: Implement strategy via PyTorch / policy network.
         pass
+
+    def wants_to_chow(self, discarded_tile: Tile) -> bool:
+        """
+        Decision hook: whether the player *chooses* to Chow.
+        """
+        # TODO: Implement strategy via PyTorch / policy network.
+        return True
+
+    def wants_to_pong(self, discarded_tile: Tile) -> bool:
+        """
+        Decision hook: whether the player *chooses* to Pong.
+        """
+        # TODO: Implement strategy via PyTorch / policy network.
+        return True
+
+    def wants_to_kong(self, discarded_tile: Tile) -> bool:
+        """
+        Decision hook: whether the player *chooses* to Kong.
+        """
+        # TODO: Implement strategy via PyTorch / policy network.
+        return True
+
+    def wants_to_self_kong(self, drawn_tile: Tile) -> bool:
+        """
+        Decision hook: whether the player *chooses* to declare a self-Kong.
+        """
+        # TODO: Implement strategy via PyTorch / policy network.
+        return True
+
+    def wants_to_win(self, min_points_to_win: int) -> bool:
+        """
+        Decision hook: whether the player *chooses* to declare a win.
+        """
+        # TODO: Implement strategy via PyTorch / policy network.
+        return True
+
+    # -------------------------------------------------------------------------
+    # Game Action Methods
+    # -------------------------------------------------------------------------
 
     def discard_tile(self, tile: Tile) -> Tile:
         """
@@ -147,6 +189,8 @@ class Player:
 
         A Pong can be declared if the player has two identical tiles in hand.
         """
+        if not discarded_tile:
+            return False
         return self.gameState.hand.count(discarded_tile) >= 2
 
     def can_kong(self, discarded_tile: Tile) -> bool:
@@ -155,41 +199,70 @@ class Player:
 
         A Kong can be declared if the player has three identical tiles in hand.
         """
+        if not discarded_tile:
+            return False
         return self.gameState.hand.count(discarded_tile) >= 3
 
-    def can_win(self, min_points_to_win: int) -> bool:
+    def can_self_kong(self, tile: Tile) -> bool:
+        """
+        Return True if the player can declare a self-Kong with the given tile.
+
+        This can happen in two ways:
+        1. Concealed Kong: Player has 4 identical tiles in hand (including 'tile').
+        2. Promoted Kong: Player has a Pong meld of 'tile' and 'tile' is in hand.
+        """
+        # Check for Concealed Kong (4 in hand)
+        if self.gameState.hand.count(tile) == 4:
+            return True
+
+        # Check for Promoted Kong (Adding to an exposed Pong)
+        # We need to check if 'tile' is in hand (it should be, as it was just drawn)
+        if tile in self.gameState.hand:
+            for meld in self.gameState.melds:
+                if meld.meld_type == MeldType.PONG and meld.first_tile == tile:
+                    return True
+
+        return False
+
+    def can_win(
+        self,
+        min_points_to_win: int,
+        table_wind: Wind,
+        win_condition: WinCondition = WinCondition.WIN_FROM_SELF_DRAW,
+        is_last_tile: bool = False,
+        new_tile: Tile | None = None
+    ) -> bool:
         """
         Return True if the player can declare a win.
-        """
-        pass
 
-    def wants_to_chow(self, discarded_tile: Tile) -> bool:
+        Checks both the validity of the hand structure (e.g. 4 sets + 1 pair)
+        and whether the hand meets the minimum point requirement.
         """
-        Decision hook: whether the player *chooses* to Chow.
-        """
-        # TODO: Implement strategy via PyTorch / policy network.
-        return True
+        from hand_scorer import HandScorer
 
-    def wants_to_pong(self, discarded_tile: Tile) -> bool:
-        """
-        Decision hook: whether the player *chooses* to Pong.
-        """
-        # TODO: Implement strategy via PyTorch / policy network.
-        return True
+        # Create a copy of the hand to evaluate, adding the new tile if provided.
+        # This allows checking for a win on a discard without modifying the actual hand.
+        hand_to_eval = list(self.gameState.hand)
+        if new_tile:
+            hand_to_eval.append(new_tile)
 
-    def wants_to_kong(self, discarded_tile: Tile) -> bool:
-        """
-        Decision hook: whether the player *chooses* to Kong.
-        """
-        # TODO: Implement strategy via PyTorch / policy network.
-        return True
+        # 1. Check valid hand structure (4 sets + 1 pair, or special hands).
+        if not HandScorer.can_win(hand_to_eval, self.gameState.melds):
+            return False
 
-    def wants_to_win(self, min_points_to_win: int) -> bool:
-        """
-        Decision hook: whether the player *chooses* to declare a win.
-        """
-        # TODO: Implement strategy via PyTorch / policy network.
-        return True
+        # 2. Calculate points earned from the hand.
+        points = HandScorer.evaluate(
+            hand=hand_to_eval,
+            melds=self.gameState.melds,
+            bonus_tiles=self.gameState.bonus_tiles,
+            seat_wind=self.gameState.seatWind,
+            table_wind=table_wind,
+            win_condition=win_condition,
+            is_last_tile=is_last_tile
+        )
+
+        total_points = sum(p.value for p in points)
+        return total_points >= min_points_to_win
 
     def chow(self, tile1: Tile, tile2: Tile, discarded_tile: Tile):
         """
@@ -257,6 +330,34 @@ class Player:
         )
         self.gameState.melds.append(kong_meld)
 
+    def declare_self_kong(self, tile: Tile):
+        """
+        Execute a self-Kong (either concealed or promoted).
+        """
+        # Case 1: Concealed Kong (4 tiles in hand)
+        if self.gameState.hand.count(tile) == 4:
+            for _ in range(4):
+                self.gameState.hand.remove(tile)
+            kong_meld = Meld.create_kong(tile, tile, tile, tile)
+            self.gameState.melds.append(kong_meld)
+            return
+
+        # Case 2: Promoted Kong (Add to Pong)
+        if tile in self.gameState.hand:
+            for idx, meld in enumerate(self.gameState.melds):
+                if meld.meld_type == MeldType.PONG and meld.first_tile == tile:
+                    # Remove the tile from hand
+                    self.gameState.hand.remove(tile)
+                    # Upgrade the meld (remove old Pong, add new Kong)
+                    # Note: Meld objects are immutable-ish, better to replace.
+                    # We need the original 3 tiles + new one.
+                    tiles = meld.tiles + [tile]
+                    new_kong = Meld(tiles, MeldType.KONG)
+                    self.gameState.melds[idx] = new_kong
+                    return
+
+        raise ValueError("Cannot declare self-Kong: conditions not met.")
+
     def draw_tile(self, drawn_tile: Tile) -> Tile:
         self.gameState.hand.append(drawn_tile)
 
@@ -267,42 +368,36 @@ class Player:
         Returns the tile discarded after forming the Chow, or None if no Chow
         could be formed.
         """
-        if not isinstance(discarded_tile.value, int) or \
-                discarded_tile.suit not in [TileSuit.CHARACTER, TileSuit.BAMBOO, TileSuit.DOT]:
+        if not isinstance(discarded_tile.value, int) or discarded_tile.is_honor():
             return None
 
         tile_value = discarded_tile.value
         tile_suit = discarded_tile.suit
+
+        # Use a set for O(1) lookups.
+        hand_set = set[Tile](self.gameState.hand)
+
         chosen_tile1, chosen_tile2 = None, None
 
         # Case 1: Discarded tile is the middle tile (X-1, X, X+1).
         if 1 < tile_value < 9:
             needed_tile1 = Tile(tile_suit, tile_value - 1)
             needed_tile2 = Tile(tile_suit, tile_value + 1)
-            if (
-                needed_tile1 in self.gameState.hand
-                and needed_tile2 in self.gameState.hand
-            ):
+            if needed_tile1 in hand_set and needed_tile2 in hand_set:
                 chosen_tile1, chosen_tile2 = needed_tile1, needed_tile2
 
         # Case 2: Discarded tile is the lowest tile (X, X+1, X+2).
         if chosen_tile1 is None and tile_value < 8:
             needed_tile1 = Tile(tile_suit, tile_value + 1)
             needed_tile2 = Tile(tile_suit, tile_value + 2)
-            if (
-                needed_tile1 in self.gameState.hand
-                and needed_tile2 in self.gameState.hand
-            ):
+            if needed_tile1 in hand_set and needed_tile2 in hand_set:
                 chosen_tile1, chosen_tile2 = needed_tile1, needed_tile2
 
         # Case 3: Discarded tile is the highest tile (X-2, X-1, X).
         if chosen_tile1 is None and tile_value > 2:
             needed_tile1 = Tile(tile_suit, tile_value - 2)
             needed_tile2 = Tile(tile_suit, tile_value - 1)
-            if (
-                needed_tile1 in self.gameState.hand
-                and needed_tile2 in self.gameState.hand
-            ):
+            if needed_tile1 in hand_set and needed_tile2 in hand_set:
                 chosen_tile1, chosen_tile2 = needed_tile1, needed_tile2
 
         if chosen_tile1 is None:
@@ -360,16 +455,6 @@ class Player:
                 win_from_player_id=win_from_player_id,
             )
         )
-
-    def update_score(self, point_limit: int) -> int:
-        """
-        Calculate and update the player's total score from recorded wins.
-        """
-        total_score = 0
-        for win in self.wins:
-            total_score += win.get_score(max_point_limit=point_limit)
-        self.score = total_score
-        return total_score
 
     def display_hand(self) -> None:
         """

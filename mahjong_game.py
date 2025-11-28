@@ -1,38 +1,50 @@
+from collections import deque
 import random
 
 from common import Wind
 from game_history import GameHistory, GameResult
 from player import Player
 from tile import DragonValue, FlowerValue, SeasonValue, Tile, TileSuit, WindValue
+from win import WinCondition
 
 
 class MahjongGame:
 
     def __init__(self, min_points_to_win: int = 3, max_point_limit: int = 13):
-        self.tableWind = Wind.EAST
-        self.dealer_index = 0  # Index of the dealer player
-        self.tiles = []  # List of all tiles in the game
-        self.discards = []  # List of discarded tiles
+        # Wind of the table.
+        self.table_wind: Wind = Wind.EAST
+        # Index of the dealer player.
+        self.dealer_index: int = 0
+        # Wall tiles; acts as a double-ended queue.
+        self.tiles: deque[Tile] = deque[Tile]()
+        # List of discarded tiles.
+        self.discards: list[Tile] = []
 
         # Minimum points required to declare a win.
-        self.min_points_to_win = min_points_to_win
+        self.min_points_to_win: int = min_points_to_win
         # Maximum points limit for scoring.
-        self.max_point_limit = max_point_limit
-        self.history = []
-        self.players = self.create_players()
+        self.max_point_limit: int = max_point_limit
+        # History of game results.
+        self.history: list[GameHistory] = []
+        # List of players.
+        self.players: list[Player] = self.initialize_players()
 
-    def create_players(self) -> list[Player]:
+    # -------------------------------------------------------------------------
+    # Initialization & Setup
+    # -------------------------------------------------------------------------
+
+    def initialize_players(self) -> list[Player]:
         """
         Initializes and returns a list of four Player objects for the game.
         Each player is assigned a unique seat index from 0 to 3.
         """
-        players = []
-        for seat_idx in range(4):
-            player = Player(seat_index=seat_idx)
-            players.append(player)
-        return players
+        return [Player(seat_index=seat_idx) for seat_idx in range(4)]
 
     def initialize_game(self) -> None:
+        """
+        Sets up a new game: determines wind, shuffles, resets states, and deals hands.
+        """
+        self.determine_table_wind()
         self.shuffle_tiles()
         self.reset_player_game_states()
         self.deal_initial_player_hands()
@@ -43,13 +55,10 @@ class MahjongGame:
 
         print(f"Game #{self.get_game_count()}")
 
-        for idx, player in enumerate(self.players, 1):
+        for player in self.players:
             player.sort_hand()
-            print(f"Player {idx}'s Hand:")
-            player.display_hand()
-            print(f"Player {idx}'s Bonus Tiles:")
-            player.display_bonus_tiles()
-            print()
+
+        self.display_player_hands()
 
     def reset_player_game_states(self):
         """
@@ -62,61 +71,67 @@ class MahjongGame:
             # The dealer always has the East wind for the round.
             # Players are ordered clockwise: East (dealer), South, West, North.
             # We use modulo 4 arithmetic to determine the relative position from the dealer.
-            relative_position_from_dealer = (
+            relative_position_from_dealer: int = (
                 player.seat_index - self.dealer_index + 4) % 4
-            seat_wind = Wind(relative_position_from_dealer)
+            seat_wind: Wind = Wind(relative_position_from_dealer)
             player.reset_game_state(seat_wind=seat_wind)
 
-    def shuffle_tiles(self) -> list[Tile]:
+    def shuffle_tiles(self) -> None:
         """
         Initializes and shuffles the full set of Mahjong tiles.
         Each tile type (except Flowers and Seasons) has 4 copies.
         Flowers and Seasons have 1 copy each.
         """
-        # Reset tiles and discards arrays.
-        self.tiles = []
+        # Clear the discard pile to start a new game or round
         self.discards = []
 
-        all_tiles = [
-            # Standard Suit Tiles (4 copies each of 1-9 for each suit)
+        # Build the complete tile set, including all suited, honor, and bonus tiles
+        all_tiles: list[Tile] = self._build_complete_tile_set()
 
-            # Characters (Wan)
-            *[Tile(TileSuit.CHARACTER, i) for i in range(1, 10)] * 4,
-            # Bamboo (Sou)
-            *[Tile(TileSuit.BAMBOO, i) for i in range(1, 10)] * 4,
-            # Dots (Pin)
-            *[Tile(TileSuit.DOT, i) for i in range(1, 10)] * 4,
-
-            # Honor Tiles (4 copies each)
-
-            # Winds
-            *[Tile(TileSuit.HONOR, WindValue.EAST) for _ in range(4)],
-            *[Tile(TileSuit.HONOR, WindValue.SOUTH) for _ in range(4)],
-            *[Tile(TileSuit.HONOR, WindValue.WEST) for _ in range(4)],
-            *[Tile(TileSuit.HONOR, WindValue.NORTH) for _ in range(4)],
-            # Dragons
-            *[Tile(TileSuit.HONOR, DragonValue.RED) for _ in range(4)],
-            *[Tile(TileSuit.HONOR, DragonValue.GREEN) for _ in range(4)],
-            *[Tile(TileSuit.HONOR, DragonValue.WHITE) for _ in range(4)],
-
-            # Bonus Tiles (1 copy each)
-
-            # Flowers
-            *[Tile(TileSuit.FLOWER, FlowerValue.PLUM)],
-            *[Tile(TileSuit.FLOWER, FlowerValue.ORCHID)],
-            *[Tile(TileSuit.FLOWER, FlowerValue.CHRYSANTHEMUM)],
-            *[Tile(TileSuit.FLOWER, FlowerValue.BAMBOO)],
-            # Seasons
-            *[Tile(TileSuit.SEASON, SeasonValue.SPRING)],
-            *[Tile(TileSuit.SEASON, SeasonValue.SUMMER)],
-            *[Tile(TileSuit.SEASON, SeasonValue.AUTUMN)],
-            *[Tile(TileSuit.SEASON, SeasonValue.WINTER)],
-        ]
-
-        # Randomly shuffle all generated tiles
+        # Shuffle the tiles randomly to ensure game fairness
         random.shuffle(all_tiles)
-        # Assign the shuffled tiles to the game's tile list
-        self.tiles = all_tiles
+
+        # Place the shuffled tiles into a deque to simulate the tile wall
+        self.tiles = deque[Tile](all_tiles)
+
+    @staticmethod
+    def _build_complete_tile_set() -> list[Tile]:
+        """
+        Generates the complete set of tiles before shuffling.
+        """
+        tiles: list[Tile] = []
+
+        # Suited tiles: Characters, Bamboo, Dots (1-9, four copies each)
+        suited_suits = (TileSuit.CHARACTER, TileSuit.BAMBOO, TileSuit.DOT)
+        for suit in suited_suits:
+            for value in range(1, 10):
+                tiles.extend(Tile(suit, value) for _ in range(4))
+
+        # Honor tiles: Winds and Dragons (four copies each)
+        for wind in (WindValue.EAST, WindValue.SOUTH, WindValue.WEST, WindValue.NORTH):
+            tiles.extend(Tile(TileSuit.HONOR, wind) for _ in range(4))
+
+        for dragon in (DragonValue.RED, DragonValue.GREEN, DragonValue.WHITE):
+            tiles.extend(Tile(TileSuit.HONOR, dragon) for _ in range(4))
+
+        # Bonus tiles: Flowers and Seasons (single copy each)
+        for flower in (
+            FlowerValue.PLUM,
+            FlowerValue.ORCHID,
+            FlowerValue.CHRYSANTHEMUM,
+            FlowerValue.BAMBOO,
+        ):
+            tiles.append(Tile(TileSuit.FLOWER, flower))
+
+        for season in (
+            SeasonValue.SPRING,
+            SeasonValue.SUMMER,
+            SeasonValue.AUTUMN,
+            SeasonValue.WINTER,
+        ):
+            tiles.append(Tile(TileSuit.SEASON, season))
+
+        return tiles
 
     def deal_initial_player_hands(self):
         """
@@ -125,30 +140,35 @@ class MahjongGame:
         for player in self.players:
             player.hand = [self.tiles.pop() for _ in range(13)]
 
-    def replace_bonus_tiles_in_player_hands(self):
+    def determine_table_wind(self) -> Wind:
         """
-        Processes each player's initial hand to identify and replace bonus tiles (Flowers and Seasons).
-        Bonus tiles are moved from the player's hand to their bonus_tiles collection,
-        and replacement tiles are drawn from the main tile stack to maintain hand size.
+        Determines the table wind by analyzing the game history.
+        The table wind changes (increments) every time the dealership passes from the last player (North/3) back to the first (East/0).
+
+        Note: If a dealer wins, they remain the dealer for the next game. In this case,
+        the dealer index does not change, and no rotation is counted.
         """
-        for player in self.players:
-            initial_hand_size = len(player.hand)
-            new_hand = []
+        rounds = 0
+        # Start with the initial dealer index (0).
+        previous_dealer = 0
 
-            # Extract Flower and Season tiles from the player's hand and move them to bonus_tiles.
-            for tile in player.hand:
-                if tile.suit in [TileSuit.FLOWER, TileSuit.SEASON]:
-                    player.bonus_tiles.append(tile)
-                else:
-                    new_hand.append(tile)
-            player.hand = new_hand
+        # Iterate through past games to track dealer rotations.
+        for game in self.history:
+            current_dealer = game.dealer_index
+            if previous_dealer == 3 and current_dealer == 0:
+                rounds += 1
+            previous_dealer = current_dealer
 
-            # Draw replacement tiles for the removed bonus tiles.
-            num_tile_replacements_needed = initial_hand_size - len(player.hand)
+        # Check the transition to the current (upcoming) game's dealer.
+        if previous_dealer == 3 and self.dealer_index == 0:
+            rounds += 1
 
-            for _ in range(num_tile_replacements_needed):
-                if self.tiles:
-                    player.hand.append(self.tiles.pop())
+        self.table_wind = Wind(rounds % 4)
+        return self.table_wind
+
+    # -------------------------------------------------------------------------
+    # Game Loop
+    # -------------------------------------------------------------------------
 
     def play(self):
         """
@@ -158,91 +178,155 @@ class MahjongGame:
 
         # Game always starts with the dealer seat.
         active_player_idx = self.dealer_index
+        winner_seat_index = None
 
         while not self.is_game_over():
             current_player = self.players[active_player_idx]
             most_recent_discard = self.discards[-1] if self.discards else None
 
-            # Flag to track if a discard was taken by a meld (Kong/Pong/Chow).
             discard_taken_by_meld = False
             new_active_player_idx = None
 
-            # 1. Check for high-priority reactions (Kong/Pong) from other players to the most recent discard.
-            # This only happens if a discard has actually occurred.
+            # 1. Check reactions to discard (Win/Kong/Pong).
             if most_recent_discard is not None:
-                # `_handle_discard_reactions` determines if a Kong/Pong occurred and returns the reacting player's index.
+                win_claimed = False
+                for player in self.players:
+                    # Cannot win on own discard.
+                    if player.seat_index == (active_player_idx - 1 + 4) % 4:
+                        continue
+
+                    is_last_tile = len(self.tiles) == 0
+                    can_win = player.can_win(
+                        min_points_to_win=self.min_points_to_win,
+                        table_wind=self.table_wind,
+                        win_condition=WinCondition.DISCARD,
+                        is_last_tile=is_last_tile,
+                        new_tile=most_recent_discard
+                    )
+
+                    if can_win and player.wants_to_win(self.min_points_to_win):
+                        player.declare_discard_win(
+                            most_recent_discard, (active_player_idx - 1 + 4) % 4)
+                        win_claimed = True
+                        winner_seat_index = player.seat_index
+                        # First valid claim wins (simplified rule).
+                        break
+
+                if win_claimed:
+                    break
+
+                # Check for Kong/Pong.
                 discard_taken_by_meld, new_active_player_idx = self._handle_discard_reactions(
                     player_who_would_draw_next_idx=active_player_idx,
                     most_recent_discard=most_recent_discard
                 )
 
             if discard_taken_by_meld:
-                # If a Kong or Pong occurred, the turn immediately passes to the reacting player.
+                # Turn jumps to player claiming discard.
                 active_player_idx = new_active_player_idx
-                # Skip remaining actions for this 'original' turn and start the new player's turn.
                 continue
 
-            # If no Kong/Pong, it's `current_player`'s turn.
-            # 2. Check for Chow reaction from the `current_player` (only if a discard exists).
+            # 2. Check for Chow (current player only).
             if most_recent_discard is not None:
-                # `_handle_chow_reaction` checks if the current player can and wants to Chow.
                 discarding_player_index = (active_player_idx - 1 + 4) % 4
                 if self._handle_chow_reaction(current_player, most_recent_discard, discarding_player_index):
                     discard_taken_by_meld = True
 
-            # 3. If no meld reaction occurred (Kong/Pong/Chow), the current player draws a tile from the wall.
+            # 3. Draw Phase (if no claim).
             if not discard_taken_by_meld:
-                drawn_tile = self._draw_and_replace_bonus_tiles(current_player)
-                current_player.draw_tile(drawn_tile)
+                turn_ended, winner_idx = self._handle_draw_phase(
+                    current_player)
+                if turn_ended:
+                    if winner_idx is not None:
+                        winner_seat_index = winner_idx
 
-                if current_player.can_win(min_points_to_win=self.min_points_to_win) and current_player.wants_to_win(
-                        min_points_to_win=self.min_points_to_win):
+                    # Game ended.
+                    if self.is_game_over() or winner_seat_index is not None:
+                        break
 
-                    current_player.declare_self_draw_win(drawn_tile)
-
-                    # If a player declares a win, they do not make a discard.
                     continue
 
-            # 4. Player discards a tile.
-            # A player always discards a tile if their hand is not empty after drawing or completing a meld.
+            # 4. Discard Phase.
             if current_player.hand:
-                # Retain the original logic of discarding the first tile as a placeholder for player strategy.
+                # Simple strategy: discard first tile.
                 discarded_tile = current_player.discard_tile(
                     current_player.hand[0])
 
                 self.discards.append(discarded_tile)
 
-            # 5. Move to the next player's turn.
+            # 5. Next Turn.
             active_player_idx = (active_player_idx + 1) % 4
 
-    def _draw_and_replace_bonus_tiles(self, player: Player) -> Tile | None:
-        """
-        Player draws a tile, replacing bonus tiles (Flowers/Seasons) until a non-bonus tile is drawn
-        or the main tile stack (wall) is empty.
-        Returns the last non-bonus tile drawn, or None if the wall is exhausted before drawing one.
-        """
-        latest_non_bonus_tile_drawn = None
-        while True:
-            if not self.tiles:
-                # No more tiles left in the wall to draw from.
-                break
+        self.finalize_game(winner_seat_index)
 
-            drawn_tile = self.tiles.pop()
-
-            if drawn_tile.suit in [TileSuit.FLOWER, TileSuit.SEASON]:
-                # If the drawn tile is a bonus tile, move it from player's hand to bonus_tiles.
-                player.bonus_tiles.append(player.hand.pop())
+    def finalize_game(self, winner_seat_index: int | None):
+        """
+        Handles the end of a game, updates history, and determines dealer rotation.
+        """
+        if winner_seat_index is not None:
+            # A player won
+            self.append_to_history(
+                GameResult.WIN, winner_index=winner_seat_index)
+            if winner_seat_index == self.dealer_index:
+                # Dealer won, so they stay dealer. Round count does NOT increase.
+                pass
             else:
-                # Non-bonus tile drawn, so this is the final tile drawn for this turn.
-                latest_non_bonus_tile_drawn = drawn_tile
-                break
-        return latest_non_bonus_tile_drawn
+                # Dealer lost, rotate dealer.
+                self.dealer_index = (self.dealer_index + 1) % 4
+        else:
+            # Draw (Wall exhausted)
+            self.append_to_history(GameResult.DRAW)
+            # On draw, typically dealer rotates (unless special rules apply).
+            # We assume rotation here.
+            self.dealer_index = (self.dealer_index + 1) % 4
+
+        self.update_player_scores()
+
+    def _handle_draw_phase(self, current_player: Player) -> tuple[bool, int | None]:
+        """
+        Handles the draw phase for the current player, including:
+        - Drawing a tile (and replacing bonus tiles).
+        - Checking for Self-Draw Win.
+        - Checking for and executing Self-Kong (with re-draws).
+
+        Returns (True, winner_seat_index) if the turn ends immediately (due to Win or Draw),
+        otherwise (False, None) if the player should proceed to discard.
+        """
+        while True:
+            # 1. Draw a tile (handling bonus tiles automatically).
+            drawn_tile = self._draw_and_replace_bonus_tiles(current_player)
+
+            # 2. Check for Game End (Draw) if wall is empty.
+            if drawn_tile is None:
+                return True, None
+
+            current_player.draw_tile(drawn_tile)
+
+            # 3. Check for Self-Draw Win.
+            is_last_tile = len(self.tiles) == 0
+            if current_player.can_win(min_points_to_win=self.min_points_to_win, table_wind=self.table_wind, is_last_tile=is_last_tile) and current_player.wants_to_win(
+                    min_points_to_win=self.min_points_to_win):
+
+                current_player.declare_self_draw_win(drawn_tile)
+                return True, current_player.seat_index
+
+            # 4. Check for Self-Kong.
+            # If a kong is declared, the loop repeats to draw a replacement tile.
+            # This handles chained kongs (Draw -> Kong -> Draw -> Kong).
+            if current_player.can_self_kong(drawn_tile) and current_player.wants_to_self_kong(drawn_tile):
+                current_player.declare_self_kong(drawn_tile)
+                continue
+
+            # 5. Proceed to Discard Phase (no win or kong).
+            return False, None
 
     def _handle_discard_reactions(self, player_who_would_draw_next_idx: int, most_recent_discard: Tile) -> tuple[bool, int | None]:
         """
         Checks for Kong/Pong reactions from any player (except the discarder) to the most recent discard.
-        Returns (True, reacting_player_seat_index) if a reaction occurred and the discard was taken,
-        otherwise (False, None). Priority: Kong > Pong, and first player encountered (simplification).
+
+        Returns (True, reacting_player_seat_index) if a reaction occurred and the discard was taken, otherwise (False, None).
+
+        Priority: Kong > Pong, and first player encountered.
         """
         if not most_recent_discard:
             return False, None
@@ -274,14 +358,76 @@ class MahjongGame:
         If so, performs the Chow and removes the discard. Returns True if Chow occurred, False otherwise.
         Chow is typically only possible for the player immediately following the discarder.
         """
-        if not most_recent_discard:
-            return False
 
         if current_player.can_chow(most_recent_discard, discarding_player_index) and current_player.wants_to_chow(most_recent_discard):
             current_player.declare_chow(most_recent_discard)
-            self.discards.pop()  # The chowed tile is removed from discards
+            self.discards.pop()  # The chowed tile is removed from discards.
             return True
         return False
+
+    # -------------------------------------------------------------------------
+    # Game Helper Methods
+    # -------------------------------------------------------------------------
+
+    def replace_bonus_tiles_in_player_hands(self):
+        """
+        Processes each player's initial hand to identify and replace bonus tiles (Flowers and Seasons).
+        Bonus tiles are moved from the player's hand to their bonus_tiles collection,
+        and replacement tiles are drawn from the main tile stack to maintain hand size.
+        """
+        # Define which suits are considered bonus tiles (Flowers and Seasons).
+        bonus_suits = (TileSuit.FLOWER, TileSuit.SEASON)
+
+        # Iterate through all players to process their hands for bonus tiles.
+        for player in self.players:
+            # Identify all bonus tiles in the player's hand.
+            bonus_tiles = [
+                tile for tile in player.hand if tile.suit in bonus_suits]
+
+            # If this player has no bonus tiles, skip them.
+            if not bonus_tiles:
+                continue
+
+            # Move identified bonus tiles from hand to the player's bonus_tiles collection.
+            player.bonus_tiles.extend(bonus_tiles)
+            # Remove bonus tiles from the player's hand, retaining only non-bonus tiles.
+            player.hand = [
+                tile for tile in player.hand if tile.suit not in bonus_suits]
+
+            # For each removed bonus tile, draw a replacement tile from the wall.
+            self._draw_replacements_from_wall(player, len(bonus_tiles))
+
+    def _draw_replacements_from_wall(self, player: Player, count: int) -> None:
+        """
+        Draws up to `count` replacement tiles for the specified player from the wall.
+        """
+        for _ in range(count):
+            if not self.tiles:
+                break
+            player.hand.append(self.tiles.popleft())
+
+    def _draw_and_replace_bonus_tiles(self, player: Player) -> Tile | None:
+        """
+        Player draws a tile, replacing bonus tiles (Flowers/Seasons) until a non-bonus tile is drawn
+        or the main tile stack (wall) is empty.
+        Returns the last non-bonus tile drawn, or None if the wall is exhausted before drawing one.
+        """
+        latest_non_bonus_tile_drawn = None
+        while True:
+            if not self.tiles:
+                # No more tiles left in the wall to draw from.
+                break
+
+            drawn_tile = self.tiles.pop()
+
+            if drawn_tile.suit in [TileSuit.FLOWER, TileSuit.SEASON]:
+                # If the drawn tile is a bonus tile, move it from player's hand to bonus_tiles.
+                player.bonus_tiles.append(player.hand.pop())
+            else:
+                # Non-bonus tile drawn, so this is the final tile drawn for this turn.
+                latest_non_bonus_tile_drawn = drawn_tile
+                break
+        return latest_non_bonus_tile_drawn
 
     def is_game_over(self) -> bool:
         """
@@ -290,20 +436,65 @@ class MahjongGame:
         # Placeholder logic: game ends when there are no tiles left to draw.
         return len(self.tiles) == 0
 
-    def append_to_history(self, result: GameResult) -> GameHistory:
+    def append_to_history(self, result: GameResult, winner_index: int | None = None) -> GameHistory:
         """
         Appends a new game result to the game's history.
-
-        Args:
-            result (GameResult): The result of the completed game round.
-
-        Returns:
-            GameHistory: The newly created game history entry.
         """
         new_history_entry = GameHistory(
-            index=self.get_game_count(), result=result)
+            index=self.get_game_count(),
+            result=result,
+            table_wind=self.table_wind,
+            dealer_index=self.dealer_index,
+            winner_index=winner_index
+        )
         self.history.append(new_history_entry)
         return new_history_entry
 
     def get_game_count(self) -> int:
         return len(self.history)
+
+    def update_player_scores(self):
+        """
+        Updates the scores of all players based on their wins.
+        If the win is a self-draw, all other non-winning players pay the winner.
+        If it's a regular win (discard), only the discarder pays the winner.
+        """
+        # Reset scores to 0 or carry over? Assuming cumulative or round-based.
+        # Since this method is called potentially multiple times or at end of game,
+        # let's assume it calculates based on self.wins history or just the latest state.
+        # However, `Player.wins` stores a list of wins.
+        # Let's iterate through all players and their wins to calculate score transfers.
+
+        # Reset scores first if recalculating from scratch, or handle incrementally.
+        # Given `Player.score` is a simple integer, let's recalculate from scratch for safety.
+        for player in self.players:
+            player.score = 0
+
+        for player_idx, player in enumerate(self.players):
+            for win in player.wins:
+                win_score = win.calculate_score(self.max_point_limit)
+
+                if win.win_condition == WinCondition.WIN_FROM_SELF_DRAW:
+                    # Self-draw: All other players pay
+                    for other_idx, other_player in enumerate(self.players):
+                        if other_idx != player_idx:
+                            other_player.score -= win_score
+                            player.score += win_score
+
+                elif win.win_condition == WinCondition.WIN_FROM_DISCARD:
+                    # Discard win: Only the discarder pays
+                    if win.win_from_player_id is not None:
+                        discarder = self.players[win.win_from_player_id]
+                        discarder.score -= win_score
+                        player.score += win_score
+                    else:
+                        # Fallback if win_from_player_id is missing (shouldn't happen for WIN_FROM_DISCARD)
+                        pass
+
+    def display_player_hands(self):
+        for idx, player in enumerate(self.players, 1):
+            print(f"Player {idx}'s Hand:")
+            player.display_hand()
+            print(f"Player {idx}'s Bonus Tiles:")
+            player.display_bonus_tiles()
+            print()

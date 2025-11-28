@@ -48,7 +48,9 @@ class PointSource:
     """
 
     def __init__(self, point_type: PointType, value: int):
+        # Enum describing the specific scoring criteria this instance represents.
         self.point_type = point_type
+        # Numeric fan/point value awarded when this source is present.
         self.value = value
 
     @staticmethod

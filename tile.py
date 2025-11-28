@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from enum import Enum
 
 
@@ -10,7 +11,7 @@ class TileSuit(Enum):
     SEASON = "Season"
 
 
-class WindValue(Enum):
+class WindValue:
     EAST = 0
     SOUTH = 1
     WEST = 2
@@ -37,20 +38,19 @@ class SeasonValue(Enum):
     WINTER = 3
 
 
+@dataclass(frozen=True)
 class Tile:
     """
     Represents a Mahjong tile with a suit and a value.
     """
-
-    def __init__(self, suit: TileSuit, value: (int | FlowerValue | SeasonValue | WindValue | DragonValue)):
-        self.suit = suit
-        self.value = value
+    suit: TileSuit
+    value: int | FlowerValue | SeasonValue | WindValue | DragonValue
 
     def is_honor(self) -> bool:
         return self.suit == TileSuit.HONOR
 
     def is_terminal(self) -> bool:
-        return not self.is_bonus_tile and self.value in [1, 9]
+        return not self.is_bonus_tile() and self.value in [1, 9]
 
     def is_bonus_tile(self) -> bool:
         return self.suit in [TileSuit.FLOWER, TileSuit.SEASON]
@@ -72,42 +72,43 @@ class Tile:
         return False
 
     def __eq__(self, otherTile):
+        """
+        Checks equality between this tile and another.
+        Two tiles are considered equal if they share the same suit and value.
+        """
+        if not isinstance(otherTile, Tile):
+            return False
         return self.suit == otherTile.suit and self.value == otherTile.value
 
     def __repr__(self) -> str:
-        if self.value == DragonValue.RED:
-            return "RD"
-        elif self.value == DragonValue.GREEN:
-            return "GD"
-        elif self.value == DragonValue.WHITE:
-            return "WD"
-        elif self.value == WindValue.EAST:
-            return "EW"
-        elif self.value == WindValue.SOUTH:
-            return "SW"
-        elif self.value == WindValue.WEST:
-            return "WW"
-        elif self.value == WindValue.NORTH:
-            return "NW"
-        elif self.value == FlowerValue.PLUM:
-            return "1F"
-        elif self.value == FlowerValue.ORCHID:
-            return "2F"
-        elif self.value == FlowerValue.CHRYSANTHEMUM:
-            return "3F"
-        elif self.value == FlowerValue.BAMBOO:
-            return "4F"
-        elif self.value == SeasonValue.SPRING:
-            return "1S"
-        elif self.value == SeasonValue.SUMMER:
-            return "2S"
-        elif self.value == SeasonValue.AUTUMN:
-            return "3S"
-        elif self.value == SeasonValue.WINTER:
-            return "4S"
-        elif self.suit == TileSuit.BAMBOO:
-            return f"{self.value}B"
-        elif self.suit == TileSuit.CHARACTER:
-            return f"{self.value}C"
-        elif self.suit == TileSuit.DOT:
-            return f"{self.value}D"
+        honor_repr = {
+            DragonValue.RED: "RD",
+            DragonValue.GREEN: "GD",
+            DragonValue.WHITE: "WD",
+            WindValue.EAST: "EW",
+            WindValue.SOUTH: "SW",
+            WindValue.WEST: "WW",
+            WindValue.NORTH: "NW",
+            FlowerValue.PLUM: "1F",
+            FlowerValue.ORCHID: "2F",
+            FlowerValue.CHRYSANTHEMUM: "3F",
+            FlowerValue.BAMBOO: "4F",
+            SeasonValue.SPRING: "1S",
+            SeasonValue.SUMMER: "2S",
+            SeasonValue.AUTUMN: "3S",
+            SeasonValue.WINTER: "4S",
+        }
+
+        if self.value in honor_repr:
+            return honor_repr[self.value]
+
+        suit_suffix = {
+            TileSuit.BAMBOO: "B",
+            TileSuit.CHARACTER: "C",
+            TileSuit.DOT: "D",
+        }.get(self.suit)
+
+        if suit_suffix:
+            return f"{self.value}{suit_suffix}"
+
+        return f"{self.suit.name}:{self.value}"
