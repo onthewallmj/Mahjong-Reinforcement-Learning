@@ -5,15 +5,16 @@ A Python-based simulation environment for Mahjong, designed for reinforcement le
 ## Project Structure
 
 -   **`main.py`**: The entry point for the simulation. Runs a game loop until a full table revolution (East, South, West, North rounds) is completed.
--   **`mahjong/game.py`**: Contains the `Game` class, which manages the overall game state, turn logic, dealer rotation, and table wind.
--   **`mahjong/player.py`**: Defines the `Player` class, handling individual player state (hand, melds, score) and decision-making interface.
--   **`mahjong/hand_scorer.py`**: Implements the scoring logic, including checks for standard winning hands (4 sets + 1 pair) and special hands (e.g., Thirteen Orphans).
--   **`mahjong/tile.py`**: Defines the `Tile` class and enums for suits and values.
--   **`mahjong/meld.py`**: Defines the `Meld` class for representing sets of tiles (Chow, Pong, Kong).
--   **`mahjong/game_history.py`**: Tracks the history of played games.
--   **`mahjong/win.py`**: Defines win conditions and score calculation.
--   **`mahjong/point_source.py`**: Manages point values for different scoring elements.
--   **`mahjong/common.py`**: Shared enums and constants (e.g., `Wind`).
+-   **`mahjong/`**: Package containing the core game logic.
+    -   **`game.py`**: Contains the `Game` class, which manages the overall game state, turn logic, dealer rotation, and table wind.
+    -   **`player.py`**: Defines the `Player` class, handling individual player state (hand, melds, score) and decision-making interface.
+    -   **`hand_scorer.py`**: Implements the scoring logic, including checks for standard winning hands (4 sets + 1 pair) and special hands (e.g., Thirteen Orphans).
+    -   **`tile.py`**: Defines the `Tile` class and enums for suits and values.
+    -   **`meld.py`**: Defines the `Meld` class for representing sets of tiles (Chow, Pong, Kong).
+    -   **`game_history.py`**: Tracks the history of played games.
+    -   **`win.py`**: Defines win conditions and score calculation.
+    -   **`point_source.py`**: Manages point values for different scoring elements.
+    -   **`common.py`**: Shared enums and constants (e.g., `Wind`).
 
 ## Features
 
