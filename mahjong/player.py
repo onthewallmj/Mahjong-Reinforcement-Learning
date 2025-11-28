@@ -99,6 +99,14 @@ class Player:
             raise ValueError("Cannot discard from empty hand")
         return random.choice(self.hand)
 
+    def determine_tiles_to_chow(self) -> list[Tile]:
+        """
+        Decide which tiles to chow.
+        Note: Players can have multiple options to chow with from their hand.
+        """
+        # TODO: Implement strategy via PyTorch / policy network.
+        return []
+
     def wants_to_chow(self, discarded_tile: Tile) -> bool:
         """
         Decision hook: whether the player *chooses* to Chow.
