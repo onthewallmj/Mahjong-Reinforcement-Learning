@@ -22,7 +22,9 @@ class ActionLog:
     and (if applicable) the tile that was discarded as part of the action.
     """
 
-    def __init__(self, action: ActionType, player_index: (0 | 1 | 2 | 3), inserted_tile: Tile, discarded_tile: Tile | None = None):
+    def __init__(self, move_index: int, action: ActionType, player_index: (0 | 1 | 2 | 3), inserted_tile: Tile, discarded_tile: Tile | None = None):
+        # The move index for this action
+        self.move_index = move_index
         # The type of action taken (draw, discard, chow, pong, kong, win).
         self.action = action
         # Index of the player who performed the action (0–3).
@@ -34,4 +36,4 @@ class ActionLog:
 
     def __repr__(self):
         # Provide a readable string representation of the ActionLog for debugging/logging.
-        return f"{self.action.value} by Player {self.player_index} | Inserted: {self.inserted_tile} | Discarded: {self.discarded_tile if self.discarded_tile else 'None'}"
+        return f"Move: {self.move_index + 1} | {self.action.value} by Player {self.player_index + 1} | Inserted: {self.inserted_tile} | Discarded: {self.discarded_tile if self.discarded_tile else 'None'}"

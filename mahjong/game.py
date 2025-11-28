@@ -23,6 +23,8 @@ class Game:
         self.discards: list[Tile] = []
         # Log of actions taken during the game.
         self.action_log: list[ActionLog] = []
+        # Tracks the current move index, incremented for each new action sequence.
+        self.move_index: int = 0
 
         # Minimum points required to declare a win.
         self.min_points_to_win: int = min_points_to_win
@@ -49,6 +51,7 @@ class Game:
         Sets up a new game: determines wind, shuffles, resets states, and deals hands.
         """
         self.action_log = []
+        self.move_index = 0
         self.determine_table_wind()
         self.shuffle_tiles()
         self.reset_player_game_states()
@@ -179,7 +182,8 @@ class Game:
         """
         Logs a game action to the action log.
         """
-        log_entry = ActionLog(action_type, player_index, tile, discard_tile)
+        log_entry = ActionLog(self.move_index, action_type,
+                              player_index, tile, discard_tile)
         self.action_log.append(log_entry)
 
     def play(self):
@@ -196,7 +200,8 @@ class Game:
         # Our initialize_game deals 13. So dealer needs to draw.
         should_draw = True
 
-        while not self.is_game_over():
+        while not self.are_tiles_exhausted():
+            self.move_index += 1
             current_player = self.players[active_player_idx]
 
             # --- Draw Phase ---
@@ -529,11 +534,10 @@ class Game:
                 break
         return latest_non_bonus_tile_drawn
 
-    def is_game_over(self) -> bool:
+    def are_tiles_exhausted(self) -> bool:
         """
-        Determines if the game is over based on win conditions or tile exhaustion.
+        Determines if the tile wall is exhausted (no tiles left).
         """
-        # Placeholder logic: game ends when there are no tiles left to draw.
         return len(self.tiles) == 0
 
     def append_to_history(self, result: GameResult, winner_index: int | None = None) -> GameHistory:
