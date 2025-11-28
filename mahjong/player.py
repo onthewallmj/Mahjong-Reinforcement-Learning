@@ -2,8 +2,9 @@ import random
 
 from .common import Wind
 from .meld import Meld, MeldType
+from .point_source import PointSource
 from .tile import Tile, TileSuit
-from .win import WinRecord, WinCondition
+from .win import WinCondition, WinRecord
 
 
 class PlayerGameState:
@@ -13,11 +14,16 @@ class PlayerGameState:
     """
 
     def __init__(self, seatWind: Wind):
-        self.seatWind = seatWind
-        self.hand = []
-        self.bonus_tiles = []  # Flower and Season Tiles
+        # The player's current wind (East, South, West, North) for this round
+        self.seatWind: Wind = seatWind
+        # Tiles currently in the player's hand
+        self.hand: list[Tile] = []
+        # Bonus tiles, e.g., Flower and Season tiles
+        self.bonus_tiles: list[Tile] = []
+        # Melded sets laid down by the player (e.g., Pong, Chow, Kong)
         self.melds: list[Meld] = []
-        self.point_sources = []  # List of PointSource objects
+        # Sources of points for the hand, as PointSource objects
+        self.point_sources: list[PointSource] = []
 
 
 class Player:
