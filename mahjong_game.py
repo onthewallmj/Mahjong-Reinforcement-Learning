@@ -1,15 +1,8 @@
-from enum import Enum
+from common import Wind
 from tile import Tile, TileSuit, WindValue, DragonValue, FlowerValue, SeasonValue
 from player import Player
 from game_history import GameHistory, GameResult
 import random
-
-
-class Wind(Enum):
-    EAST = 0
-    SOUTH = 1
-    WEST = 2
-    NORTH = 3
 
 
 class MahjongGame:
