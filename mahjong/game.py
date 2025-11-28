@@ -192,93 +192,124 @@ class Game:
         active_player_idx = self.dealer_index
         winner_seat_index = None
 
+        # Dealer starts with 14 tiles (effectively already drew), or we deal 13 and they draw.
+        # Our initialize_game deals 13. So dealer needs to draw.
+        should_draw = True
+
         while not self.is_game_over():
             current_player = self.players[active_player_idx]
-            most_recent_discard = self.discards[-1] if self.discards else None
 
-            discard_taken_by_meld = False
-            new_active_player_idx = None
-
-            # 1. Check reactions to discard (Win/Kong/Pong).
-            if most_recent_discard is not None:
-                win_claimed = False
-                discarder_idx = (active_player_idx - 1 + 4) % 4
-
-                # Check for wins in turn order starting from the player to the right of the discarder.
-                # This ensures "Head Bump" priority (nearest player in turn order wins).
-                for offset in range(1, 4):
-                    seat_idx = (discarder_idx + offset) % 4
-                    player = self.players[seat_idx]
-
-                    is_last_tile = len(self.tiles) == 0
-                    can_win = player.can_win(
-                        min_points_to_win=self.min_points_to_win,
-                        table_wind=self.table_wind,
-                        win_condition=WinCondition.WIN_FROM_DISCARD,
-                        is_last_tile=is_last_tile,
-                        new_tile=most_recent_discard
-                    )
-
-                    if can_win and player.wants_to_win(self.min_points_to_win):
-                        player.declare_discard_win(
-                            most_recent_discard, discarder_idx)
-                        self.log_action(
-                            ActionType.WIN, player.seat_index, most_recent_discard)
-                        win_claimed = True
-                        winner_seat_index = player.seat_index
-                        # First valid claim wins (Head Bump rule).
-                        break
-
-                if win_claimed:
-                    break
-
-                # Check for Kong/Pong.
-                discard_taken_by_meld, new_active_player_idx = self._handle_discard_reactions(
-                    player_who_would_draw_next_idx=active_player_idx,
-                    most_recent_discard=most_recent_discard
-                )
-
-            if discard_taken_by_meld:
-                # Turn jumps to player claiming discard.
-                active_player_idx = new_active_player_idx
-                continue
-
-            # 2. Check for Chow (current player only).
-            if most_recent_discard is not None:
-                discarding_player_index = (active_player_idx - 1 + 4) % 4
-                if self._handle_chow_reaction(current_player, most_recent_discard, discarding_player_index):
-                    discard_taken_by_meld = True
-
-            # 3. Draw Phase (if no claim).
-            if not discard_taken_by_meld:
+            # --- Draw Phase ---
+            if should_draw:
                 turn_ended, winner_idx = self._handle_draw_phase(
                     current_player)
                 if turn_ended:
                     if winner_idx is not None:
                         winner_seat_index = winner_idx
                         # Log win on self-draw
-                        self.log_action(
-                            ActionType.WIN, winner_idx, self.action_log[-1].tile if self.action_log else None)
+                        if self.action_log:
+                            self.log_action(
+                                ActionType.WIN, winner_idx, self.action_log[-1].inserted_tile)
+                            print(self.action_log[-1])
+                        else:
+                            # Edge case: win on first draw
+                            # Use last tile in hand? self-draw tile is already in hand.
+                            # We need to know *which* tile was drawn to log it properly,
+                            # but _handle_draw_phase already logs DRAW.
+                            pass
 
-                    # Game ended.
-                    if self.is_game_over() or winner_seat_index is not None:
-                        break
+                    break  # Game over (Win or Draw)
 
-                    continue
+                # If _handle_draw_phase returns False, it means player drew (and possibly Kong'd) and now needs to discard.
+                # BUT, if they Kong'd, _handle_draw_phase loops internally until no more Kongs.
+                # So we are definitely ready to discard.
 
-            # 4. Discard Phase.
-            if current_player.hand:
-                # Simple strategy: discard first tile.
-                tile_to_discard = current_player.determine_tile_to_discard()
-                discarded_tile = current_player.discard_tile(tile_to_discard)
+            # --- Discard Phase ---
+            if not current_player.hand:
+                # Should not happen if logic is correct.
+                raise ValueError(
+                    f"Player {current_player.seat_index} has no tiles to discard!")
 
-                self.discards.append(discarded_tile)
-                # We attach the discard to the last action in the log
+            tile_to_discard = current_player.determine_tile_to_discard()
+            discarded_tile = current_player.discard_tile(tile_to_discard)
+            self.discards.append(discarded_tile)
+
+            # Log discard by attaching to previous action (Draw/Pong/Chow/Kong)
+            if self.action_log:
+                self.action_log[-1].discarded_tile = discarded_tile
+                # Print the log entry now that it is complete with the discard
+                print(self.action_log[-1])
+
+            # --- Reaction Phase ---
+            # Check reactions from OTHER players to this discard.
+            # Priority: Win > Kong/Pong > Chow (only next player)
+
+            # 1. Check Win
+            discarder_idx = active_player_idx
+            win_claimed = False
+
+            for offset in range(1, 4):
+                seat_idx = (discarder_idx + offset) % 4
+                player = self.players[seat_idx]
+
+                is_last_tile = len(self.tiles) == 0
+                can_win = player.can_win(
+                    min_points_to_win=self.min_points_to_win,
+                    table_wind=self.table_wind,
+                    win_condition=WinCondition.WIN_FROM_DISCARD,
+                    is_last_tile=is_last_tile,
+                    new_tile=discarded_tile
+                )
+
+                if can_win and player.wants_to_win(self.min_points_to_win):
+                    player.declare_discard_win(discarded_tile, discarder_idx)
+                    self.log_action(
+                        ActionType.WIN, player.seat_index, discarded_tile)
+                    print(self.action_log[-1])
+                    win_claimed = True
+                    winner_seat_index = player.seat_index
+                    break  # Head Bump priority
+
+            if win_claimed:
+                break
+
+            # 2. Check Kong/Pong (any player)
+            # We use the existing helper, but note it modifies self.discards!
+            # It pops the tile if claimed.
+            reaction_claimed, reactor_idx = self._handle_discard_reactions(
+                active_player_idx, discarded_tile)
+
+            if reaction_claimed:
+                active_player_idx = reactor_idx
+                # If Kong, need to draw replacement -> Discard.
+                # If Pong, skip draw -> Discard.
+                # My _handle_discard_reactions returns True for both.
+                # We need to know WHICH one it was to set should_draw.
+                # We can peek at the log.
                 if self.action_log:
-                    self.action_log[-1].discard_tile = discarded_tile
+                    last_action = self.action_log[-1]
+                    if last_action.action == ActionType.KONG:
+                        should_draw = True
+                    else:  # PONG
+                        should_draw = False
+                else:
+                    # Should not happen if reaction_claimed is True
+                    should_draw = True
+                continue  # Start loop for reactor
 
-            # 5. Next Turn.
-            active_player_idx = (active_player_idx + 1) % 4
+            # 3. Check Chow (next player only)
+            next_player_idx = (active_player_idx + 1) % 4
+            next_player = self.players[next_player_idx]
+
+            # _handle_chow_reaction also pops discards if claimed.
+            if self._handle_chow_reaction(next_player, discarded_tile, active_player_idx):
+                active_player_idx = next_player_idx
+                should_draw = False  # Chow skips draw
+                continue
+
+            # --- Next Turn (Normal) ---
+            active_player_idx = next_player_idx
+            should_draw = True
 
         self.finalize_game(winner_seat_index)
 
@@ -324,9 +355,20 @@ class Game:
             if drawn_tile is None:
                 return True, None
 
+            # If this is a replacement draw after a Kong, we suppress the separate DRAW log
+            # but we update the KONG log? No, user wants KONG to have discard.
+            # So we essentially merge this DRAW into the KONG flow.
+            # But we need to record the tile in the player's hand.
             current_player.draw_tile(drawn_tile)
-            self.log_action(ActionType.DRAW,
-                            current_player.seat_index, drawn_tile)
+
+            # If the previous action was KONG, we don't log a new DRAW.
+            # The subsequent discard will be attached to the KONG action.
+            is_replacement_draw = False
+            if consecutive_kongs > 0:
+                is_replacement_draw = True
+            else:
+                self.log_action(ActionType.DRAW,
+                                current_player.seat_index, drawn_tile)
 
             # Determine potential win condition based on consecutive kongs
             current_win_condition = WinCondition.WIN_FROM_SELF_DRAW
@@ -357,6 +399,11 @@ class Game:
                 # The `win_from_player_id` logic in `update_player_scores` handles the payout.
                 # But we need to ensure that if this Kong leads to a win, we know if it was originally from a discard.
                 # Since we don't track original Pong source yet, we'll assume self-draw payment for now.
+
+                # If we have a previous action (likely DRAW or previous KONG) that hasn't been printed,
+                # we should print it now because the turn is continuing into a new Kong.
+                if self.action_log:
+                    print(self.action_log[-1])
 
                 current_player.declare_self_kong(drawn_tile)
                 self.log_action(ActionType.KONG,

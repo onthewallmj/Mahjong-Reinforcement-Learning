@@ -1,3 +1,5 @@
+import random
+
 from .common import Wind
 from .meld import Meld, MeldType
 from .tile import Tile, TileSuit
@@ -93,10 +95,9 @@ class Player:
         Decide which tile to discard.
         """
         # TODO: Implement strategy via PyTorch / policy network.
-        # Temporary implementation: discard the last tile in the hand
         if not self.hand:
-             raise ValueError("Cannot discard from empty hand")
-        return self.hand[-1]
+            raise ValueError("Cannot discard from empty hand")
+        return random.choice(self.hand)
 
     def wants_to_chow(self, discarded_tile: Tile) -> bool:
         """
