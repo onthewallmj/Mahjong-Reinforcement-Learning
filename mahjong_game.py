@@ -3,6 +3,7 @@ import random
 
 from common import Wind
 from game_history import GameHistory, GameResult
+from meld import MeldType
 from player import Player
 from tile import DragonValue, FlowerValue, SeasonValue, Tile, TileSuit, WindValue
 from win import WinCondition
@@ -326,6 +327,16 @@ class MahjongGame:
             # If a kong is declared, the loop repeats to draw a replacement tile.
             # This handles chained kongs (Draw -> Kong -> Draw -> Kong).
             if current_player.can_self_kong(drawn_tile) and current_player.wants_to_self_kong(drawn_tile):
+                # Determine if this is a promoted Kong (from a previous Pong)
+                is_promoted_kong = any(m.meld_type == MeldType.PONG and m.first_tile ==
+                                       drawn_tile for m in current_player.gameState.melds)
+
+                # For now, we assume promoted kongs or concealed kongs during self-draw phase count towards self-draw wins
+                # unless we track the source of the original Pong.
+                # The `win_from_player_id` logic in `update_player_scores` handles the payout.
+                # But we need to ensure that if this Kong leads to a win, we know if it was originally from a discard.
+                # Since we don't track original Pong source yet, we'll assume self-draw payment for now.
+
                 current_player.declare_self_kong(drawn_tile)
                 consecutive_kongs += 1
                 continue
@@ -487,26 +498,16 @@ class MahjongGame:
             for win in player.wins:
                 win_score = win.calculate_score(self.max_point_limit)
 
-                if win.win_condition in [
-                    WinCondition.WIN_FROM_SELF_DRAW,
-                    WinCondition.WIN_FROM_KONG,
-                    WinCondition.WIN_FROM_DOUBLE_KONG
-                ]:
-                    # Self-draw: All other players pay
+                if win.win_from_player_id is not None:
+                    # Specific player pays (Discard win, or Kong win initiated by discard)
+                    self.players[win.win_from_player_id].score -= win_score
+                    player.score += win_score
+                else:
+                    # All others pay (Self-draw win, or Kong win initiated by self-draw)
                     for other_idx, other_player in enumerate(self.players):
                         if other_idx != player_idx:
                             other_player.score -= win_score
                             player.score += win_score
-
-                elif win.win_condition == WinCondition.WIN_FROM_DISCARD:
-                    # Discard win: Only the discarder pays
-                    if win.win_from_player_id is not None:
-                        discarder = self.players[win.win_from_player_id]
-                        discarder.score -= win_score
-                        player.score += win_score
-                    else:
-                        # Fallback if win_from_player_id is missing (shouldn't happen for WIN_FROM_DISCARD)
-                        pass
 
     def display_player_hands(self):
         for idx, player in enumerate(self.players, 1):
