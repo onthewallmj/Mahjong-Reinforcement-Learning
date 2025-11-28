@@ -9,7 +9,6 @@ A Python-based simulation environment for Mahjong (Hong Kong Old Style variants)
 -   **`evaluate.py`**: Script to benchmark a trained agent against bots.
 -   **`mahjong/`**: Package containing the core game logic and RL wrappers.
     -   **`pettingzoo_env.py`**: **(New)** PettingZoo Parallel Environment for 4-player self-play training.
-    -   **`env.py`**: **(New)** Gymnasium Environment for single-agent training against bots.
     -   **`game.py`**: Manages the game state machine, turn logic, and rules. Refactored to support step-wise execution for RL.
     -   **`player.py`**: Defines the `Player` class and decision interfaces.
     -   **`observation.py`**: **(New)** Encodes the game state into a (33, 34) tensor for Neural Networks.
@@ -21,12 +20,6 @@ A Python-based simulation environment for Mahjong (Hong Kong Old Style variants)
 ### 1. Environment Frameworks
 
 This project utilizes two distinct frameworks to support different training paradigms:
-
--   **Gymnasium (`mahjong/env.py`)**:
-
-    -   **Purpose**: Single-Agent RL.
-    -   **Setup**: The RL agent controls Player 0, while Players 1-3 are controlled by internal scripts (random or heuristic bots).
-    -   **Use Case**: Initial debugging, sanity checks, and learning basic mechanics without the instability of multi-agent dynamics.
 
 -   **PettingZoo (`mahjong/pettingzoo_env.py`)**:
     -   **Purpose**: Multi-Agent RL (MARL).

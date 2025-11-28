@@ -15,6 +15,7 @@ from .tile import (
     WindValue,
 )
 from .win import WinRecord, WinCondition
+from .pettingzoo_env import MahjongPettingZooEnv
 
 __all__ = [
     "ActionLog",
@@ -38,4 +39,5 @@ __all__ = [
     "WindValue",
     "WinRecord",
     "WinCondition",
+    "MahjongPettingZooEnv",
 ]

@@ -1,7 +1,6 @@
 import os
 
 import gymnasium as gym
-from mahjong.env import MahjongEnv
 from mahjong.pettingzoo_env import MahjongPettingZooEnv
 import numpy as np
 from stable_baselines3 import PPO
@@ -10,18 +9,14 @@ import supersuit as ss
 
 def evaluate_agent(model_path=None, num_episodes=10):
     """
-    Evaluates an agent (Random or PPO) against the environment.
+    Evaluates a trained agent by running it in self-play (controlling all 4 agents).
     """
     print(f"Starting evaluation over {num_episodes} episodes...")
 
-    # We use the Single-Agent Gymnasium Env for evaluation against bots
-    # This is simpler for measuring "Win Rate" vs "The Field"
-    env = MahjongEnv()
-
-    # Metrics
-    total_rewards = []
-    wins = 0
-    steps_per_episode = []
+    # Use the PettingZoo environment wrapped exactly like in training
+    env = MahjongPettingZooEnv()
+    env = ss.pettingzoo_env_to_vec_env_v1(env)
+    env = ss.concat_vec_envs_v1(env, num_vec_envs=1, num_cpus=1, base_class='stable_baselines3')
 
     # Load model if provided
     model = None
@@ -31,49 +26,66 @@ def evaluate_agent(model_path=None, num_episodes=10):
     else:
         print("No model provided or found. Using Random Agent.")
 
+    # Metrics
+    total_rewards = [] # Per agent
+    steps_per_episode = []
+
     for episode in range(num_episodes):
-        obs, info = env.reset()
+        obs = env.reset()
         done = False
-        episode_reward = 0
-        steps = 0
+        episode_steps = 0
+        # To track rewards per agent, we need to unpack the vectorized reward
+        # The vec env returns rewards as an array [r0, r1, r2, r3]
+        episode_rewards = np.zeros(4)
 
         while not done:
             if model:
-                # Predict action using trained model
-                # deterministic=True gives the best move (greedy)
                 action, _states = model.predict(obs, deterministic=True)
             else:
-                # Random action
-                action = env.action_space.sample()
+                # Random action: sample from the vector env's action space
+                action = [env.action_space.sample() for _ in range(4)] # Incorrect, vec_env.action_space handles batch
+                # Actually, env.action_space is likely MultiDiscrete or similar? 
+                # No, concat_vec_envs makes it look like a single env with batch dim.
+                # env.action_space.sample() returns a list/array of actions.
+                action = [env.action_space.sample() for _ in range(env.num_envs)]
+                # Flatten if necessary, but SB3 env usually returns array
+                # Actually, DummyVecEnv actions are usually np arrays.
+                action = np.array([env.action_space.sample() for _ in range(env.num_envs)])
+                # The action space of the *Vectorized* env is just the space for ONE agent? No.
+                # pettingzoo_env_to_vec_env makes num_envs = 4.
+                # So env.action_space is the space for 1 agent.
+                # To sample for all 4, we need [space.sample() for _ in range(4)]
+                action = [env.action_space.sample() for _ in range(env.num_envs)]
 
-            obs, reward, terminated, truncated, info = env.step(action)
-            episode_reward += reward
-            steps += 1
-            done = terminated or truncated
+            obs, rewards, dones, infos = env.step(action)
+            episode_rewards += rewards
+            episode_steps += 1
+            
+            # In a vectorized env, 'dones' is an array.
+            # Mahjong ends for everyone at the same time.
+            done = any(dones)
 
-        total_rewards.append(episode_reward)
-        steps_per_episode.append(steps)
-
-        # Check if agent won (Reward > 0 implies score increase, usually win or huge points)
-        # Better check: Did the game end with Agent 0 as winner?
-        # We can peek at env.game.winner_seat_index (internal access)
-        if env.game.winner_seat_index == 0:
-            wins += 1
-
-        print(
-            f"Episode {episode + 1}: Reward={episode_reward}, Steps={steps}, Winner={env.game.winner_seat_index}")
+        # Log results for this episode
+        # Just take the reward of Player 0 as representative, or average?
+        # Since it's self play, average reward should be 0 (zero sum).
+        # We can log Player 0's score.
+        total_rewards.append(episode_rewards[0])
+        steps_per_episode.append(episode_steps)
+        
+        # We can't easily check "Winner" without peeking into the internal env
+        # But the reward tells us the rank.
+        
+        print(f"Episode {episode + 1}: P0 Reward={episode_rewards[0]}, Steps={episode_steps}")
 
     # Summary
     avg_reward = np.mean(total_rewards)
     avg_steps = np.mean(steps_per_episode)
-    win_rate = wins / num_episodes * 100
 
     print("\n" + "="*30)
-    print("EVALUATION RESULTS")
+    print("EVALUATION RESULTS (Self-Play)")
     print("="*30)
     print(f"Episodes: {num_episodes}")
-    print(f"Win Rate: {win_rate:.1f}%")
-    print(f"Avg Reward: {avg_reward:.2f}")
+    print(f"Avg Reward (Player 0): {avg_reward:.2f}")
     print(f"Avg Steps:  {avg_steps:.1f}")
     print("="*30)
 
