@@ -25,7 +25,7 @@ class Player:
         Initialize a player with a fixed seat index and empty game state.
 
         The actual seat wind (East/South/West/North) is computed by the
-        MahjongGame and passed into reset_game_state; here we just store the
+        Game and passed into reset_game_state; here we just store the
         stable seat index 0-3.
         """
         self.starting_index = seat_index
@@ -37,7 +37,7 @@ class Player:
         """
         Resets the player's game state for a new round.
 
-        `seatWind` is typically a Wind enum instance provided by MahjongGame.
+        `seatWind` is typically a Wind enum instance provided by Game.
         We store it on the PlayerGameState to avoid importing the enum here
         and creating circular dependencies.
         """

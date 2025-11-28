@@ -9,7 +9,7 @@ from .tile import DragonValue, FlowerValue, SeasonValue, Tile, TileSuit, WindVal
 from .win import WinCondition
 
 
-class MahjongGame:
+class Game:
 
     def __init__(self, min_points_to_win: int = 3, max_point_limit: int = 13):
         # Wind of the table.
