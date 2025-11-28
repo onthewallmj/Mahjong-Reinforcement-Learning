@@ -14,7 +14,9 @@ from .phase import Phase
 
 class Game:
 
-    def __init__(self, min_points_to_win: int = 3, max_point_limit: int = 13):
+    def __init__(self, min_points_to_win: int = 3, max_point_limit: int = 13, debug: bool = False):
+        # Debug mode flag
+        self.debug: bool = debug
         # Wind of the table.
         self.table_wind: Wind = Wind.EAST
         # Index of the dealer player.
@@ -73,7 +75,8 @@ class Game:
         for player in self.players:
             player.sort_hand()
 
-        print(f"Starting Game #{self.get_game_count() + 1}...")
+        if self.debug:
+            print(f"Starting Game #{self.get_game_count() + 1}...")
 
         # Initialize State Machine
         self.current_player_idx = self.dealer_index
@@ -242,7 +245,8 @@ class Game:
                         if self.action_log:
                             self.log_action(
                                 ActionLogType.WIN, winner_idx, self.action_log[-1].inserted_tile)
-                            print(self.action_log[-1])
+                            if self.debug:
+                                print(self.action_log[-1])
                     self.phase = Phase.GAME_OVER
                     return
 
@@ -278,7 +282,8 @@ class Game:
             # Log discard
             if self.action_log:
                 self.action_log[-1].discarded_tile = discarded_tile
-                print(self.action_log[-1])
+                if self.debug:
+                    print(self.action_log[-1])
 
             self.phase = Phase.REACTION
             return
@@ -307,7 +312,8 @@ class Game:
                         most_recent_discard, discarder_idx)
                     self.log_action(ActionLogType.WIN,
                                     player.seat_index, most_recent_discard)
-                    print(self.action_log[-1])
+                    if self.debug:
+                        print(self.action_log[-1])
                     self.winner_seat_index = player.seat_index
                     self.phase = Phase.GAME_OVER
                     return
@@ -437,7 +443,7 @@ class Game:
 
                 # If we have a previous action (likely DRAW or previous KONG) that hasn't been printed,
                 # we should print it now because the turn is continuing into a new Kong.
-                if self.action_log:
+                if self.action_log and self.debug:
                     print(self.action_log[-1])
 
                 current_player.declare_self_kong(drawn_tile)

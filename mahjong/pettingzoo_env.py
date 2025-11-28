@@ -25,7 +25,7 @@ class MahjongPettingZooEnv(ParallelEnv):
     def __init__(self):
         super().__init__()
         
-        self.game = Game()
+        self.game = Game(debug=False)
         self.observation_builder = ObservationBuilder()
         
         self.possible_agents = ["player_0", "player_1", "player_2", "player_3"]
@@ -59,7 +59,7 @@ class MahjongPettingZooEnv(ParallelEnv):
 
     def reset(self, seed=None, options=None):
         self.agents = self.possible_agents[:]
-        self.game = Game() 
+        self.game = Game(debug=False) 
         self.game.initialize_game()
         self.rewards = {a: 0 for a in self.agents}
         

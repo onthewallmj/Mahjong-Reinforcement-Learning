@@ -4,7 +4,7 @@ from mahjong import Game
 def main(num_simulations: int = 1):
     for i in range(num_simulations):
         print(f"Starting Simulation {i + 1}...")
-        game = Game(min_points_to_win=3, max_point_limit=13)
+        game = Game(min_points_to_win=3, max_point_limit=13, debug=True)
 
         while True:
             game.play()
