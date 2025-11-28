@@ -58,7 +58,7 @@ class Game:
         for player in self.players:
             player.sort_hand()
 
-        print(f"Game #{self.get_game_count()}")
+        print(f"Game #{self.get_game_count() + 1}")
         self.display_player_hands()
 
     def reset_player_game_states(self):
