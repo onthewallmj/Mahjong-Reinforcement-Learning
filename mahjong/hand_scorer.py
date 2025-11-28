@@ -317,8 +317,10 @@ class HandScorer:
                 return [PointSource.small_winds()]
 
         points: list[PointSource] = []
-        seat_value = WindValue(seat_wind.value)
-        table_value = WindValue(table_wind.value)
+        # Use values directly since WindValue is a class, not an Enum, or cast if needed.
+        # Ideally, WindValue constants match Wind enum values.
+        seat_value = seat_wind.value
+        table_value = table_wind.value
 
         if counts.get(seat_value, 0) >= 3:
             points.append(PointSource.seat_wind())

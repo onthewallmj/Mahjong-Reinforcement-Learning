@@ -54,11 +54,11 @@ class Game:
         while any(tile.suit in [TileSuit.FLOWER, TileSuit.SEASON] for player in self.players for tile in player.hand):
             self.replace_bonus_tiles_in_player_hands()
 
-        print(f"Game #{self.get_game_count()}")
-
+        # Sort hands after initial deal and replacements.
         for player in self.players:
             player.sort_hand()
 
+        print(f"Game #{self.get_game_count()}")
         self.display_player_hands()
 
     def reset_player_game_states(self):
