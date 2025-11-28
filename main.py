@@ -14,7 +14,7 @@ def main(num_simulations: int = 1):
             if game.history:
                 last_game = game.history[-1]
                 print(
-                    f"\nGame #{last_game.index + 1} | Results ({last_game.result.name}):")
+                    f"\nGame #{last_game.index + 1} | Results ({last_game.outcome.name}):")
                 for idx, player in enumerate(game.players, 1):
                     print(f"Player {idx} score: {player.score}")
                 print()

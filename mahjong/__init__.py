@@ -1,6 +1,7 @@
+from .action_log import ActionLog, ActionLogType
 from .common import Wind
 from .game import Game
-from .game_history import GameHistory, GameResult
+from .game_history import GameHistory, GameOutcome
 from .hand_scorer import HandScorer
 from .meld import Meld, MeldType
 from .player import Player, PlayerGameState
@@ -16,10 +17,12 @@ from .tile import (
 from .win import WinRecord, WinCondition
 
 __all__ = [
+    "ActionLog",
+    "ActionLogType",
     "Wind",
     "Game",
     "GameHistory",
-    "GameResult",
+    "GameOutcome",
     "HandScorer",
     "Meld",
     "MeldType",
@@ -33,6 +36,6 @@ __all__ = [
     "Tile",
     "TileSuit",
     "WindValue",
-    "Win",
+    "WinRecord",
     "WinCondition",
 ]

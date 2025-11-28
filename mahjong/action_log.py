@@ -2,7 +2,7 @@ from enum import Enum
 from .tile import Tile
 
 
-class ActionType(Enum):
+class ActionLogType(Enum):
     """
     Represents the type of action taken by a player during the Mahjong game.
     Each action type is associated with a specific Mahjong game action.
@@ -22,7 +22,7 @@ class ActionLog:
     and (if applicable) the tile that was discarded as part of the action.
     """
 
-    def __init__(self, move_index: int, action: ActionType, player_index: (0 | 1 | 2 | 3), inserted_tile: Tile, discarded_tile: Tile | None = None):
+    def __init__(self, move_index: int, action: ActionLogType, player_index: (0 | 1 | 2 | 3), inserted_tile: Tile, discarded_tile: Tile | None = None):
         # The move index for this action
         self.move_index = move_index
         # The type of action taken (draw, discard, chow, pong, kong, win).

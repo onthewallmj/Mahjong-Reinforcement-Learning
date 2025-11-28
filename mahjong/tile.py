@@ -71,6 +71,34 @@ class Tile:
 
         return False
 
+    def get_index_34(self) -> int:
+        """
+        Returns a unique index (0-33) for the tile type.
+        Suitable for vector representations (34 unique tiles).
+        Returns -1 for bonus tiles.
+        """
+        if self.is_bonus_tile():
+            return -1
+
+        if self.suit == TileSuit.CHARACTER:
+            return int(self.value) - 1
+        
+        if self.suit == TileSuit.BAMBOO:
+            return int(self.value) - 1 + 9
+        
+        if self.suit == TileSuit.DOT:
+            return int(self.value) - 1 + 18
+        
+        if self.suit == TileSuit.HONOR:
+            if isinstance(self.value, int): # WindValue constant
+                return 27 + self.value
+            if isinstance(self.value, DragonValue):
+                return 31 + self.value.value
+            # If value is already mapped or unknown
+            pass
+            
+        raise ValueError(f"Cannot map tile {self} to index 34")
+
     def __eq__(self, otherTile):
         """
         Checks equality between this tile and another.

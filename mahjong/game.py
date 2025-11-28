@@ -2,12 +2,12 @@ from collections import deque
 import random
 
 from .common import Wind
-from .game_history import GameHistory, GameResult
+from .game_history import GameHistory, GameOutcome
 from .meld import MeldType
 from .player import Player
 from .tile import DragonValue, FlowerValue, SeasonValue, Tile, TileSuit, WindValue
 from .win import WinCondition
-from .action_log import ActionLog, ActionType
+from .action_log import ActionLog, ActionLogType
 
 
 class Game:
@@ -177,7 +177,7 @@ class Game:
     # Game Loop
     # -------------------------------------------------------------------------
 
-    def log_action(self, action_type: ActionType, player_index: int, tile: Tile, discard_tile: Tile | None = None):
+    def log_action(self, action_type: ActionLogType, player_index: int, tile: Tile, discard_tile: Tile | None = None):
         """
         Logs a game action to the action log.
         """
@@ -213,7 +213,7 @@ class Game:
                         # Log win on self-draw
                         if self.action_log:
                             self.log_action(
-                                ActionType.WIN, winner_idx, self.action_log[-1].inserted_tile)
+                                ActionLogType.WIN, winner_idx, self.action_log[-1].inserted_tile)
                             print(self.action_log[-1])
                         else:
                             # Edge case: win on first draw
@@ -268,7 +268,7 @@ class Game:
                 if can_win and player.wants_to_win(self.min_points_to_win):
                     player.declare_discard_win(discarded_tile, discarder_idx)
                     self.log_action(
-                        ActionType.WIN, player.seat_index, discarded_tile)
+                        ActionLogType.WIN, player.seat_index, discarded_tile)
                     print(self.action_log[-1])
                     win_claimed = True
                     winner_seat_index = player.seat_index
@@ -292,7 +292,7 @@ class Game:
                 # We can peek at the log.
                 if self.action_log:
                     last_action = self.action_log[-1]
-                    if last_action.action == ActionType.KONG:
+                    if last_action.action == ActionLogType.KONG:
                         should_draw = True
                     else:  # PONG
                         should_draw = False
@@ -324,7 +324,7 @@ class Game:
         if winner_seat_index is not None:
             # A player won
             self.append_to_history(
-                GameResult.WIN, winner_index=winner_seat_index)
+                GameOutcome.WIN, winner_index=winner_seat_index)
             if winner_seat_index == self.dealer_index:
                 # Dealer won, so they stay dealer. Round count does NOT increase.
                 pass
@@ -333,7 +333,7 @@ class Game:
                 self.dealer_index = (self.dealer_index + 1) % 4
         else:
             # Draw (Wall exhausted)
-            self.append_to_history(GameResult.DRAW)
+            self.append_to_history(GameOutcome.TIE)
             # On draw, typically dealer rotates (unless special rules apply).
             # We assume rotation here.
             self.dealer_index = (self.dealer_index + 1) % 4
@@ -371,7 +371,7 @@ class Game:
             if consecutive_kongs > 0:
                 is_replacement_draw = True
             else:
-                self.log_action(ActionType.DRAW,
+                self.log_action(ActionLogType.DRAW,
                                 current_player.seat_index, drawn_tile)
 
             # Determine potential win condition based on consecutive kongs
@@ -410,7 +410,7 @@ class Game:
                     print(self.action_log[-1])
 
                 current_player.declare_self_kong(drawn_tile)
-                self.log_action(ActionType.KONG,
+                self.log_action(ActionLogType.KONG,
                                 current_player.seat_index, drawn_tile)
                 consecutive_kongs += 1
                 continue
@@ -441,7 +441,7 @@ class Game:
             if player.can_kong(most_recent_discard) and player.wants_to_kong(most_recent_discard):
                 player.declare_kong(most_recent_discard)
                 self.discards.pop()  # The discarded tile is taken by the player who Kong'd
-                self.log_action(ActionType.KONG,
+                self.log_action(ActionLogType.KONG,
                                 player.seat_index, most_recent_discard)
                 return True, player.seat_index
 
@@ -449,7 +449,7 @@ class Game:
             elif player.can_pong(most_recent_discard) and player.wants_to_pong(most_recent_discard):
                 player.declare_pong(most_recent_discard)
                 self.discards.pop()  # The discarded tile is taken by the player who Pong'd
-                self.log_action(ActionType.PONG,
+                self.log_action(ActionLogType.PONG,
                                 player.seat_index, most_recent_discard)
                 return True, player.seat_index
         return False, None
@@ -464,7 +464,7 @@ class Game:
         if current_player.can_chow(most_recent_discard, discarding_player_index) and current_player.wants_to_chow(most_recent_discard):
             current_player.declare_chow(most_recent_discard)
             self.discards.pop()  # The chowed tile is removed from discards.
-            self.log_action(ActionType.CHOW,
+            self.log_action(ActionLogType.CHOW,
                             current_player.seat_index, most_recent_discard)
             return True
         return False
@@ -539,13 +539,13 @@ class Game:
         """
         return len(self.tiles) == 0
 
-    def append_to_history(self, result: GameResult, winner_index: int | None = None) -> GameHistory:
+    def append_to_history(self, outcome: GameOutcome, winner_index: int | None = None) -> GameHistory:
         """
         Appends a new game result to the game's history.
         """
         new_history_entry = GameHistory(
             index=self.get_game_count(),
-            result=result,
+            outcome=outcome,
             table_wind=self.table_wind,
             dealer_index=self.dealer_index,
             winner_index=winner_index
