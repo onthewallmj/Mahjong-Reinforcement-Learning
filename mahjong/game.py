@@ -7,6 +7,7 @@ from .meld import MeldType
 from .player import Player
 from .tile import DragonValue, FlowerValue, SeasonValue, Tile, TileSuit, WindValue
 from .win import WinCondition
+from .action_log import ActionLog, ActionType
 
 
 class Game:
@@ -20,6 +21,8 @@ class Game:
         self.tiles: deque[Tile] = deque[Tile]()
         # List of discarded tiles.
         self.discards: list[Tile] = []
+        # Log of actions taken during the game.
+        self.action_log: list[ActionLog] = []
 
         # Minimum points required to declare a win.
         self.min_points_to_win: int = min_points_to_win
@@ -45,6 +48,7 @@ class Game:
         """
         Sets up a new game: determines wind, shuffles, resets states, and deals hands.
         """
+        self.action_log = []
         self.determine_table_wind()
         self.shuffle_tiles()
         self.reset_player_game_states()
@@ -171,6 +175,13 @@ class Game:
     # Game Loop
     # -------------------------------------------------------------------------
 
+    def log_action(self, action_type: ActionType, player_index: int, tile: Tile, discard_tile: Tile | None = None):
+        """
+        Logs a game action to the action log.
+        """
+        log_entry = ActionLog(action_type, player_index, tile, discard_tile)
+        self.action_log.append(log_entry)
+
     def play(self):
         """
         Main game loop to manage turns, player actions, and win conditions.
@@ -211,6 +222,7 @@ class Game:
                     if can_win and player.wants_to_win(self.min_points_to_win):
                         player.declare_discard_win(
                             most_recent_discard, discarder_idx)
+                        self.log_action(ActionType.WIN, player.seat_index, most_recent_discard)
                         win_claimed = True
                         winner_seat_index = player.seat_index
                         # First valid claim wins (Head Bump rule).
@@ -243,6 +255,7 @@ class Game:
                 if turn_ended:
                     if winner_idx is not None:
                         winner_seat_index = winner_idx
+                        self.log_action(ActionType.WIN, winner_idx, self.action_log[-1].tile if self.action_log else None) # Log win on self-draw
 
                     # Game ended.
                     if self.is_game_over() or winner_seat_index is not None:
@@ -253,10 +266,11 @@ class Game:
             # 4. Discard Phase.
             if current_player.hand:
                 # Simple strategy: discard first tile.
-                discarded_tile = current_player.discard_tile(
-                    current_player.hand[0])
+                tile_to_discard = current_player.determine_tile_to_discard()
+                discarded_tile = current_player.discard_tile(tile_to_discard)
 
                 self.discards.append(discarded_tile)
+                self.log_action(ActionType.DISCARD, current_player.seat_index, discarded_tile)
 
             # 5. Next Turn.
             active_player_idx = (active_player_idx + 1) % 4
@@ -306,6 +320,7 @@ class Game:
                 return True, None
 
             current_player.draw_tile(drawn_tile)
+            self.log_action(ActionType.DRAW, current_player.seat_index, drawn_tile)
 
             # Determine potential win condition based on consecutive kongs
             current_win_condition = WinCondition.WIN_FROM_SELF_DRAW
@@ -338,6 +353,7 @@ class Game:
                 # Since we don't track original Pong source yet, we'll assume self-draw payment for now.
 
                 current_player.declare_self_kong(drawn_tile)
+                self.log_action(ActionType.KONG, current_player.seat_index, drawn_tile)
                 consecutive_kongs += 1
                 continue
 
@@ -367,12 +383,14 @@ class Game:
             if player.can_kong(most_recent_discard) and player.wants_to_kong(most_recent_discard):
                 player.declare_kong(most_recent_discard)
                 self.discards.pop()  # The discarded tile is taken by the player who Kong'd
+                self.log_action(ActionType.KONG, player.seat_index, most_recent_discard)
                 return True, player.seat_index
 
             # If no Kong, check for Pong
             elif player.can_pong(most_recent_discard) and player.wants_to_pong(most_recent_discard):
                 player.declare_pong(most_recent_discard)
                 self.discards.pop()  # The discarded tile is taken by the player who Pong'd
+                self.log_action(ActionType.PONG, player.seat_index, most_recent_discard)
                 return True, player.seat_index
         return False, None
 
@@ -386,6 +404,7 @@ class Game:
         if current_player.can_chow(most_recent_discard, discarding_player_index) and current_player.wants_to_chow(most_recent_discard):
             current_player.declare_chow(most_recent_discard)
             self.discards.pop()  # The chowed tile is removed from discards.
+            self.log_action(ActionType.CHOW, current_player.seat_index, most_recent_discard)
             return True
         return False
 
@@ -445,8 +464,8 @@ class Game:
             drawn_tile = self.tiles.pop()
 
             if drawn_tile.suit in [TileSuit.FLOWER, TileSuit.SEASON]:
-                # If the drawn tile is a bonus tile, move it from player's hand to bonus_tiles.
-                player.bonus_tiles.append(player.hand.pop())
+                # If the drawn tile is a bonus tile, add it to bonus_tiles and draw again.
+                player.bonus_tiles.append(drawn_tile)
             else:
                 # Non-bonus tile drawn, so this is the final tile drawn for this turn.
                 latest_non_bonus_tile_drawn = drawn_tile
