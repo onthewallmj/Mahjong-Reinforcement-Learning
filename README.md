@@ -6,6 +6,7 @@ A Python-based simulation environment for Mahjong (Hong Kong Old Style variants)
 
 -   **`train.py`**: Script to train a PPO agent using Stable Baselines3 and the PettingZoo environment.
 -   **`main.py`**: A standalone simulation runner for testing the game logic without RL overhead.
+-   **`evaluate.py`**: Script to benchmark a trained agent against bots.
 -   **`mahjong/`**: Package containing the core game logic and RL wrappers.
     -   **`pettingzoo_env.py`**: **(New)** PettingZoo Parallel Environment for 4-player self-play training.
     -   **`env.py`**: **(New)** Gymnasium Environment for single-agent training against bots.
