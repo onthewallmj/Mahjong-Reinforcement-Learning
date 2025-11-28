@@ -1,5 +1,5 @@
-from mahjong_game import MahjongGame
-from player import Player
+from mahjong.mahjong_game import MahjongGame
+from mahjong.player import Player
 
 
 def main(num_simulations: int = 1):

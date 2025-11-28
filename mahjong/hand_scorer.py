@@ -3,11 +3,11 @@ from __future__ import annotations
 from collections import Counter
 from typing import Any
 
-from common import Wind
-from meld import Meld, MeldType
-from point_source import PointSource, PointType
-from tile import DragonValue, Tile, TileSuit, WindValue
-from win import WinCondition
+from .common import Wind
+from .meld import Meld, MeldType
+from .point_source import PointSource, PointType
+from .tile import DragonValue, Tile, TileSuit, WindValue
+from .win import WinCondition
 
 
 class HandScorer:

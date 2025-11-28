@@ -1,5 +1,5 @@
 from enum import Enum
-from common import Wind
+from .common import Wind
 
 
 class GameResult(Enum):

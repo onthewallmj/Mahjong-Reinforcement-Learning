@@ -1,7 +1,7 @@
-from common import Wind
-from meld import Meld, MeldType
-from tile import Tile, TileSuit
-from win import Win, WinCondition
+from .common import Wind
+from .meld import Meld, MeldType
+from .tile import Tile, TileSuit
+from .win import Win, WinCondition
 
 
 class PlayerGameState:
@@ -93,7 +93,10 @@ class Player:
         Decide which tile to discard.
         """
         # TODO: Implement strategy via PyTorch / policy network.
-        pass
+        # Temporary implementation: discard the last tile in the hand
+        if not self.hand:
+             raise ValueError("Cannot discard from empty hand")
+        return self.hand[-1]
 
     def wants_to_chow(self, discarded_tile: Tile) -> bool:
         """
@@ -238,7 +241,7 @@ class Player:
         Checks both the validity of the hand structure (e.g. 4 sets + 1 pair)
         and whether the hand meets the minimum point requirement.
         """
-        from hand_scorer import HandScorer
+        from .hand_scorer import HandScorer
 
         # Create a copy of the hand to evaluate, adding the new tile if provided.
         # This allows checking for a win on a discard without modifying the actual hand.

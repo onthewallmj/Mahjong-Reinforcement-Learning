@@ -1,6 +1,6 @@
 from enum import Enum
 
-from tile import Tile
+from .tile import Tile
 
 
 class MeldType(Enum):

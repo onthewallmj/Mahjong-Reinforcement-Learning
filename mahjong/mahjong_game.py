@@ -1,12 +1,12 @@
 from collections import deque
 import random
 
-from common import Wind
-from game_history import GameHistory, GameResult
-from meld import MeldType
-from player import Player
-from tile import DragonValue, FlowerValue, SeasonValue, Tile, TileSuit, WindValue
-from win import WinCondition
+from .common import Wind
+from .game_history import GameHistory, GameResult
+from .meld import MeldType
+from .player import Player
+from .tile import DragonValue, FlowerValue, SeasonValue, Tile, TileSuit, WindValue
+from .win import WinCondition
 
 
 class MahjongGame:
