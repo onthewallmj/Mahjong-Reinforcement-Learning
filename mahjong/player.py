@@ -493,18 +493,13 @@ class Player:
         """
         Display the player's hand tiles in a readable string format.
         """
-        output = []
-        for tile in self.hand:
-            output.append(str(tile))
-        print(", ".join(output))
+        print(", ".join([str(tile) for tile in self.hand]))
 
     def display_bonus_tiles(self) -> None:
         """
         Display the player's bonus tiles in a readable string format.
         """
-        output = []
-        for tile in self.bonus_tiles:
-            output.append(str(tile))
+        output = [str(tile) for tile in self.bonus_tiles]
         if not output:
             print("None")
         else:
