@@ -1,6 +1,7 @@
 from tile import Tile, TileSuit
 from meld import Meld
 from win import Win
+from common import Wind
 
 
 class PlayerGameState:
@@ -9,7 +10,7 @@ class PlayerGameState:
     This includes their hand, melds, bonus tiles, and points.
     """
 
-    def __init__(self, seatWind):
+    def __init__(self, seatWind: Wind):
         self.seatWind = seatWind
         self.hand = []
         self.bonus_tiles = []  # Flower and Season Tiles
@@ -30,9 +31,9 @@ class Player:
         self.starting_index = seat_index
         self.wins = []  # List of Win objects.
         self.score = 0  # Player's current score.
-        self.gameState = PlayerGameState(seat_index)
+        self.gameState = PlayerGameState(Wind(seat_index))
 
-    def reset_game_state(self, seat_wind):
+    def reset_game_state(self, seat_wind: Wind):
         """
         Resets the player's game state for a new round.
 
