@@ -1,6 +1,7 @@
 from enum import Enum
-from tile import Tile
+
 from point_source import PointSource
+from tile import Tile
 
 # Maps points to base score values according to standard rules.
 POINT_TO_SCORE_MAP = {

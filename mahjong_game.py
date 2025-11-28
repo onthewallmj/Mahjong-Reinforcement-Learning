@@ -1,8 +1,9 @@
-from common import Wind
-from tile import Tile, TileSuit, WindValue, DragonValue, FlowerValue, SeasonValue
-from player import Player
-from game_history import GameHistory, GameResult
 import random
+
+from common import Wind
+from game_history import GameHistory, GameResult
+from player import Player
+from tile import DragonValue, FlowerValue, SeasonValue, Tile, TileSuit, WindValue
 
 
 class MahjongGame:
