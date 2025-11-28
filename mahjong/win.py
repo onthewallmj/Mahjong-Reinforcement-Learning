@@ -34,9 +34,9 @@ class WinCondition(Enum):
     WIN_FROM_DOUBLE_KONG = 3
 
 
-class Win:
+class WinRecord:
     """
-    Represents a win in Mahjong.
+    Represents a recorded win event in Mahjong.
     """
 
     def __init__(self, winning_tile: Tile, hand_tiles: list[Tile], bonus_tiles: list[Tile], point_sources: list[PointSource], win_condition: WinCondition):
@@ -55,20 +55,20 @@ class Win:
     @staticmethod
     def create_discard_win(winning_tile: Tile, hand_tiles: list[Tile], bonus_tiles: list[Tile], point_sources: list[PointSource], win_from_player_id: int):
         """
-        Creates a Win object representing a win from a discarded tile.
+        Creates a WinRecord object representing a win from a discarded tile.
         """
-        win = Win(winning_tile, hand_tiles,
-                  bonus_tiles, point_sources, WinCondition.WIN_FROM_DISCARD)
+        win = WinRecord(winning_tile, hand_tiles,
+                        bonus_tiles, point_sources, WinCondition.WIN_FROM_DISCARD)
         win.win_from_player_id = win_from_player_id
         return win
 
     @staticmethod
     def create_self_draw_win(winning_tile: Tile, hand_tiles: list[Tile], bonus_tiles: list[Tile], point_sources: list[PointSource], win_condition: WinCondition = WinCondition.WIN_FROM_SELF_DRAW):
         """
-        Creates a Win object representing a self-draw win.
+        Creates a WinRecord object representing a self-draw win.
         """
-        win = Win(winning_tile, hand_tiles,
-                  bonus_tiles, point_sources, win_condition)
+        win = WinRecord(winning_tile, hand_tiles,
+                        bonus_tiles, point_sources, win_condition)
         return win
 
     def get_points(self) -> int:

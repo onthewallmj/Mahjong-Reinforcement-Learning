@@ -3,7 +3,7 @@ import random
 from .common import Wind
 from .meld import Meld, MeldType
 from .tile import Tile, TileSuit
-from .win import Win, WinCondition
+from .win import WinRecord, WinCondition
 
 
 class PlayerGameState:
@@ -31,7 +31,7 @@ class Player:
         stable seat index 0-3.
         """
         self.starting_index = seat_index
-        self.wins = []  # List of Win objects.
+        self.wins = []  # List of WinRecord objects.
         self.score = 0  # Player's current score.
         self.gameState = PlayerGameState(Wind(seat_index))
 
@@ -466,7 +466,7 @@ class Player:
         Record a self-drawn win for the player.
         """
         self.wins.append(
-            Win.create_self_draw_win(
+            WinRecord.create_self_draw_win(
                 winning_tile=winning_tile,
                 hand_tiles=self.gameState.hand,
                 bonus_tiles=self.gameState.bonus_tiles,
@@ -480,7 +480,7 @@ class Player:
         Record a win declared on a tile discarded by another player.
         """
         self.wins.append(
-            Win.create_discard_win(
+            WinRecord.create_discard_win(
                 winning_tile=winning_tile,
                 hand_tiles=self.gameState.hand,
                 bonus_tiles=self.gameState.bonus_tiles,

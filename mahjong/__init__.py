@@ -13,7 +13,7 @@ from .tile import (
     TileSuit,
     WindValue,
 )
-from .win import Win, WinCondition
+from .win import WinRecord, WinCondition
 
 __all__ = [
     "Wind",
