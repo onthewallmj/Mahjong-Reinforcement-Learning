@@ -90,6 +90,16 @@ This script will:
 3.  Train a PPO agent via `Stable Baselines3`.
 4.  Save the trained model to `mahjong_ppo_model.zip`.
 
+### Evaluation
+
+To evaluate a trained agent (or a random agent if no model is found):
+
+```bash
+python evaluate.py
+```
+
+This script will run a specified number of episodes against the internal bots and report the Win Rate, Average Reward, and Average Episode Length.
+
 ### Running a Simulation (No RL)
 
 To see the game logic in action with random moves:
