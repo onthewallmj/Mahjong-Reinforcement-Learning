@@ -195,6 +195,45 @@ class Player:
 
         return False
 
+    def get_possible_chow_combinations(self, discarded_tile: Tile) -> list[list[Tile]]:
+        """
+        Get all possible chow combinations from the player's hand.
+        """
+        possible_combinations = []
+
+        if discarded_tile.is_honor() or discarded_tile.is_bonus_tile():
+            return possible_combinations
+
+        if not isinstance(discarded_tile.value, int):
+            return possible_combinations
+
+        tile_value = discarded_tile.value
+        tile_suit = discarded_tile.suit
+        hand_set = set(self.gameState.hand)
+
+        # Check X-2, X-1, [X]
+        if tile_value > 2:
+            t1 = Tile(tile_suit, tile_value - 2)
+            t2 = Tile(tile_suit, tile_value - 1)
+            if t1 in hand_set and t2 in hand_set:
+                possible_combinations.append([t1, t2])
+
+        # Check X-1, [X], X+1
+        if 1 < tile_value < 9:
+            t1 = Tile(tile_suit, tile_value - 1)
+            t2 = Tile(tile_suit, tile_value + 1)
+            if t1 in hand_set and t2 in hand_set:
+                possible_combinations.append([t1, t2])
+
+        # Check [X], X+1, X+2
+        if tile_value < 8:
+            t1 = Tile(tile_suit, tile_value + 1)
+            t2 = Tile(tile_suit, tile_value + 2)
+            if t1 in hand_set and t2 in hand_set:
+                possible_combinations.append([t1, t2])
+
+        return possible_combinations
+
     def can_pong(self, discarded_tile: Tile) -> bool:
         """
         Return True if the player can declare a Pong.
