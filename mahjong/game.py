@@ -44,6 +44,8 @@ class Game:
         self.should_draw: bool = True
         self.phase: Phase = Phase.GAME_OVER
         self.winner_seat_index: int | None = None
+        # Track who discarded the winning tile (if any)
+        self.loser_seat_index: int | None = None
 
     # -------------------------------------------------------------------------
     # Initialization & Setup
@@ -83,6 +85,7 @@ class Game:
         self.should_draw = True
         self.phase = Phase.DRAW
         self.winner_seat_index = None
+        self.loser_seat_index = None
 
     def reset_player_game_states(self):
         """
@@ -315,6 +318,7 @@ class Game:
                     if self.debug:
                         print(self.action_log[-1])
                     self.winner_seat_index = player.seat_index
+                    self.loser_seat_index = discarder_idx
                     self.phase = Phase.GAME_OVER
                     return
 

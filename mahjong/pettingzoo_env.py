@@ -117,8 +117,10 @@ class MahjongPettingZooEnv(ParallelEnv):
             
         # 4. Return step info
         observations = {a: self.observe(a) for a in self.agents}
-        # Rewards are 0 until end (sparse)
-        rewards = {a: 0 for a in self.agents}
+        # Return accumulated rewards (from intermediate games) and reset
+        step_rewards = self.rewards.copy()
+        self.rewards = {a: 0 for a in self.agents}
+        
         terminations = {a: False for a in self.agents}
         truncations = {a: False for a in self.agents}
         infos = {a: {} for a in self.agents}
@@ -128,7 +130,30 @@ class MahjongPettingZooEnv(ParallelEnv):
         for agent in self.agents:
              infos[agent]["action_mask"] = action_masks[agent]
         
-        return observations, rewards, terminations, truncations, infos
+        return observations, step_rewards, terminations, truncations, infos
+
+    def _assign_intermediate_rewards(self, winner_idx: int | None, loser_idx: int | None):
+        """
+        Assigns intermediate rewards for winning/losing a hand.
+        This provides dense feedback to the agent.
+        """
+        # Default penalty/reward
+        win_reward = 10.0
+        deal_in_penalty = -10.0
+        
+        if winner_idx is not None:
+            winner_agent = self.idx_to_agent_name[winner_idx]
+            self.rewards[winner_agent] += win_reward
+            
+            if loser_idx is not None:
+                # Ron (Win on discard)
+                loser_agent = self.idx_to_agent_name[loser_idx]
+                self.rewards[loser_agent] += deal_in_penalty
+            else:
+                # Tsumo (Self-draw) - All others pay?
+                # For simplicity, maybe just reward winner?
+                # Or small penalty for everyone else?
+                pass
 
     def _advance_to_next_decision(self):
         """
@@ -140,6 +165,10 @@ class MahjongPettingZooEnv(ParallelEnv):
             if self.game.phase == Phase.GAME_OVER:
                 # IMPORTANT: We must finalize the game to update history and dealer rotation
                 # before checking for episode end or re-initializing.
+                
+                # Assign intermediate rewards for the hand just finished
+                self._assign_intermediate_rewards(self.game.winner_seat_index, self.game.loser_seat_index)
+                
                 self.game.finalize_game(self.game.winner_seat_index)
 
                 # Check for Rotation End logic (Same as before)
