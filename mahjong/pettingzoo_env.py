@@ -107,11 +107,12 @@ class MahjongPettingZooEnv(ParallelEnv):
         
         if terminated:
             self._assign_final_rewards()
-            observations = {a: self.observe(a) for a in self.agents}
+            # Return info for ALL possible agents to ensure wrappers don't crash
+            observations = {a: self.observe(a) for a in self.possible_agents}
             rewards = self.rewards
-            terminations = {a: True for a in self.agents}
-            truncations = {a: False for a in self.agents}
-            infos = {a: {} for a in self.agents}
+            terminations = {a: True for a in self.possible_agents}
+            truncations = {a: False for a in self.possible_agents}
+            infos = {a: {} for a in self.possible_agents}
             self.agents = []
             return observations, rewards, terminations, truncations, infos
             
@@ -216,12 +217,13 @@ class MahjongPettingZooEnv(ParallelEnv):
         Only valid discard actions are True.
         """
         masks = {}
-        for agent in self.agents:
+        # Iterate over possible_agents to ensure we always return a mask for everyone
+        for agent in self.possible_agents:
             agent_idx = self.agent_name_to_idx[agent]
             # Get player object
             player = self.game.players[agent_idx]
             
-            # Mask is size 34 (ActionSpace.SIZE)
+            # Mask is size 42 (ActionSpace.SIZE)
             mask = np.zeros(ActionSpace.SIZE, dtype=bool)
             
             # If player is active and needs to discard, mark tiles in hand as True

@@ -42,6 +42,7 @@ def train_curriculum():
         ent_coef=0.01,
         policy_kwargs=policy_kwargs,
         tensorboard_log="./mahjong_curriculum_logs/"
+        # tensorboard_log=None
     )
     
     # Train for 100,000 steps (approx 250 games if game len ~400 steps)
