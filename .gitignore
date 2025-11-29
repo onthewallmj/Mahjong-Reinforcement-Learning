@@ -1,3 +1,5 @@
 __pycache__/
 .vscode/
 mahjong_ppo_model.zip
+mahjong_phase1_vs_bots.zip
+mahjong_curriculum_logs/
