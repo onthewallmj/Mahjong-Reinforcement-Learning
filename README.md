@@ -5,10 +5,14 @@ A Python-based simulation environment for Mahjong (Hong Kong Old Style variants)
 ## Project Structure
 
 -   **`train.py`**: Script to train a PPO agent using `MaskablePPO` (from `sb3-contrib`) and the PettingZoo environment.
--   **`main.py`**: A standalone simulation runner for testing the game logic without RL overhead.
+-   **`train_curriculum.py`**: Advanced training script using a 2-phase curriculum (Bots -> Self-Play).
 -   **`evaluate.py`**: Script to benchmark a trained agent against bots or in self-play.
+-   **`main.py`**: A standalone simulation runner for testing the game logic without RL overhead.
 -   **`mahjong/`**: Package containing the core game logic and RL wrappers.
     -   **`pettingzoo_env.py`**: PettingZoo Parallel Environment for 4-player self-play training. Implements Action Masking.
+    -   **`envs/vs_bot_env.py`**: Gymnasium wrapper for Single-Agent vs Heuristic Bots.
+    -   **`agents/heuristic_agent.py`**: Rule-based bot logic.
+    -   **`feature_extractor.py`**: Custom 1D CNN for feature extraction.
     -   **`game.py`**: Manages the game state machine, turn logic, and rules.
     -   **`player.py`**: Defines the `Player` class and decision interfaces.
     -   **`observation.py`**: Encodes the game state into a (33, 34) tensor for Neural Networks.
@@ -48,7 +52,7 @@ The complex game state is encoded into a **`(33, 34)` floating-point tensor**, o
     -   **Discard History**: What has been played on the table (crucial for defensive play).
     -   **Game Context**: Dealer status, current Table Wind, and "Riichi" status (Tenpai).
 
-### 3. Decision Making (Action Space)
+### 4. Decision Making (Action Space)
 
 The agent interacts with the game via **42 Discrete Actions**:
 
@@ -58,12 +62,28 @@ The agent interacts with the game via **42 Discrete Actions**:
 
 **Action Masking**: The environment calculates a validity mask at every step. This prevents the agent from making illegal moves (e.g., discarding a tile it doesn't hold), significantly speeding up the learning process. We use `MaskablePPO` to leverage this.
 
-### 4. Multi-Agent Reinforcement Learning (MARL)
+### 5. Multi-Agent Reinforcement Learning (MARL)
 
 -   **Self-Play with Parameter Sharing**: The training script (`train.py`) uses a single Neural Network (PPO Policy) to control **all 4 players**. The AI learns by playing against copies of itself, evolving from random moves to strategic play.
 -   **Full Rotation Episodes**: A Mahjong match isn't just one hand. The environment simulates a **Full Rotation** (East Round → South Round → West Round → North Round), comprising 16+ individual hands. This forces the agent to consider long-term score preservation.
 
-### 6. Curriculum Learning Strategy
+### 6. Reward Structure
+
+The environment utilizes a combination of **Dense Intermediate Rewards** and **Sparse Tournament Rewards** to balance immediate feedback with long-term strategic goals.
+
+-   **Dense Intermediate Rewards (Per Hand)**:
+    -   **Winning a Hand (Win)**: `+10.0`. Awarded immediately to the winner of any hand.
+    -   **Dealing In (Penalty)**: `-10.0`. Applied to the player who discards the winning tile (feeding the winner).
+    -   **Other Players**: `0`.
+
+-   **Sparse Tournament Rewards (Per Game Rotation)**:
+    At the end of the full table rotation (East → North), players are ranked by their total accumulated score.
+    -   **1st Place**: `+100`
+    -   **2nd Place**: `+50`
+    -   **3rd Place**: `-50`
+    -   **4th Place**: `-100`
+
+### 7. Curriculum Learning Strategy
 
 To bootstrap the agent's learning, we employ a two-phase curriculum:
 
@@ -80,37 +100,37 @@ To bootstrap the agent's learning, we employ a two-phase curriculum:
 
 ### Training
 
+#### Curriculum Learning (Recommended)
+To train using the 2-phase curriculum (Bots -> Self-Play):
+```bash
+python train_curriculum.py
+```
+This is the standard way to train a strong agent. Logs are saved to `./mahjong_curriculum_logs/`.
+
 #### Standard Self-Play (From Scratch)
 To train from scratch using only self-play:
 ```bash
 python train.py
 ```
 
-#### Curriculum Learning (Recommended)
-To train using the 2-phase curriculum (Bots -> Self-Play):
-```bash
-python train_curriculum.py
-```
-
-### Evaluation
-
-
-This script will:
-
-1.  Initialize the `MahjongPettingZooEnv`.
-2.  Wrap it using `SuperSuit` to vectorize the 4-player parallel environment.
-3.  Train a `MaskablePPO` agent via `sb3-contrib` to enforce legal moves.
-4.  Save the trained model to `mahjong_ppo_model.zip`.
-
 ### Evaluation
 
 To evaluate a trained agent (or a random agent if no model is found):
 
 ```bash
-python evaluate.py
+python evaluate.py --episodes 100 --vs-random
 ```
+-   `--episodes`: Number of games to play.
+-   `--vs-random`: If set, plays against 3 random bots. If omitted, runs self-play evaluation.
 
-This script will run a specified number of episodes against the internal bots and report the Win Rate, Average Reward, and Average Episode Length.
+### Visualization (TensorBoard)
+
+To view training progress (rewards, losses):
+
+```bash
+tensorboard --logdir ./mahjong_curriculum_logs/
+```
+Open the link (usually `http://localhost:6006`) in your browser.
 
 ### Running a Simulation (No RL)
 
@@ -129,13 +149,14 @@ pip install -r requirements.txt
 ```
 
 Dependencies include:
-
 -   `numpy`
 -   `gymnasium`
 -   `pettingzoo`
 -   `stable-baselines3`
 -   `sb3-contrib` (for MaskablePPO)
 -   `supersuit`
+-   `tensorboard`
+-   `shimmy`
 
 ## Development Status
 
@@ -145,4 +166,6 @@ Dependencies include:
 -   [x] PettingZoo Wrapper (Multi-Agent)
 -   [x] Action Masking (Discard Phase)
 -   [x] Training Pipeline (PPO)
+-   [x] Custom CNN Feature Extractor
+-   [x] Curriculum Learning (Bots -> Self-Play)
 -   [ ] **Advanced Action Masking**: Currently, agents control Discards. Reaction logic (deciding to Chow/Pong/Kong) uses heuristics or is skipped. Implementing full agent control for reactions is the next major milestone.
