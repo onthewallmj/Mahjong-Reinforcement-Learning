@@ -63,34 +63,37 @@ The agent interacts with the game via **42 Discrete Actions**:
 -   **Self-Play with Parameter Sharing**: The training script (`train.py`) uses a single Neural Network (PPO Policy) to control **all 4 players**. The AI learns by playing against copies of itself, evolving from random moves to strategic play.
 -   **Full Rotation Episodes**: A Mahjong match isn't just one hand. The environment simulates a **Full Rotation** (East Round → South Round → West Round → North Round), comprising 16+ individual hands. This forces the agent to consider long-term score preservation.
 
-### 5. Reward Structure
+### 6. Curriculum Learning Strategy
 
-The environment utilizes a combination of **Dense Intermediate Rewards** and **Sparse Tournament Rewards** to balance immediate feedback with long-term strategic goals.
+To bootstrap the agent's learning, we employ a two-phase curriculum:
 
--   **Dense Intermediate Rewards (Per Hand)**:
+1.  **Phase 1: Rule-Based Training**:
+    -   The agent trains against 3 **Heuristic Bots** (`mahjong/agents/heuristic_agent.py`).
+    -   These bots follow basic strategies (discard isolated winds/terminals, win when able), providing a stable baseline for the agent to learn the rules and basic hand composition.
+    -   Run via `train_curriculum.py`.
 
-    -   **Winning a Hand (Win)**: `+10.0`. Awarded immediately to the winner of any hand.
-    -   **Dealing In (Penalty)**: `-10.0`. Applied to the player who discards the winning tile (feeding the winner).
-    -   **Other Players**: `0`.
-
--   **Sparse Tournament Rewards (Per Game Rotation)**:
-    At the end of the full table rotation (East → North), players are ranked by their total accumulated score.
-    -   **1st Place**: `+100`
-    -   **2nd Place**: `+50`
-    -   **3rd Place**: `-50`
-    -   **4th Place**: `-100`
-
-This structure allows the agent to learn fundamental winning strategies quickly (via intermediate rewards) while still optimizing for the final match standing (via tournament rewards).
+2.  **Phase 2: Self-Play Fine-Tuning**:
+    -   The trained model from Phase 1 is loaded into the Multi-Agent Self-Play environment.
+    -   The agent plays against copies of itself to discover advanced strategies that exploit the specific dynamics of high-level play.
 
 ## Usage
 
-### Training an Agent (RL)
+### Training
 
-To train a Mahjong agent using Proximal Policy Optimization (PPO) in a self-play setup:
-
+#### Standard Self-Play (From Scratch)
+To train from scratch using only self-play:
 ```bash
 python train.py
 ```
+
+#### Curriculum Learning (Recommended)
+To train using the 2-phase curriculum (Bots -> Self-Play):
+```bash
+python train_curriculum.py
+```
+
+### Evaluation
+
 
 This script will:
 
