@@ -1,31 +1,85 @@
 import gymnasium as gym
 from mahjong.pettingzoo_env import MahjongPettingZooEnv
 from sb3_contrib import MaskablePPO
-from stable_baselines3.common.vec_env import DummyVecEnv, VecMonitor
+from stable_baselines3.common.vec_env import DummyVecEnv, VecMonitor, VecEnvWrapper
 import supersuit as ss
+import numpy as np
+
+
+class SupersuitSB3Wrapper(VecEnvWrapper):
+    """
+    Wrapper to adapt Supersuit's VecEnv for Stable Baselines3's MaskablePPO.
+
+    Fixes:
+    1. Missing 'has_attr' method.
+    2. Tuple observation format (Gym API) vs SB3 expected format.
+    3. Missing 'action_masks' method (required by MaskablePPO).
+    4. Missing 'env_method' implementation in Supersuit.
+    """
+
+    def __init__(self, venv):
+        super().__init__(venv)
+
+    def reset(self):
+        obs = self.venv.reset()
+        if isinstance(obs, tuple):
+            return obs[0]
+        return obs
+
+    def step_async(self, actions):
+        self.venv.step_async(actions)
+
+    def step_wait(self):
+        step_result = self.venv.step_wait()
+        if len(step_result) == 5:
+            obs, rewards, terminations, truncations, infos = step_result
+            dones = np.logical_or(terminations, truncations)
+            return obs, rewards, dones, infos
+        return step_result
+
+    def has_attr(self, attr_name):
+        if attr_name == "action_masks":
+            return True
+        try:
+            return hasattr(self.venv, attr_name)
+        except:
+            return False
+
+    def env_is_wrapped(self, wrapper_class, indices=None):
+        try:
+            return self.venv.env_is_wrapped(wrapper_class, indices)
+        except TypeError:
+            return self.venv.env_is_wrapped(wrapper_class)
+
+    def env_method(self, method_name, *method_args, indices=None, **method_kwargs):
+        if method_name == "action_masks":
+            masks = self.action_masks()
+            if indices is None:
+                return masks
+            if isinstance(indices, int):
+                return [masks[indices]]
+            return [masks[i] for i in indices]
+        return self.venv.env_method(method_name, *method_args, indices=indices, **method_kwargs)
+
+    def action_masks(self):
+        if hasattr(self.venv, 'par_env'):
+            masks_dict = self.venv.par_env.action_mask()
+            return [masks_dict[agent] for agent in self.venv.par_env.possible_agents]
+        raise NotImplementedError(
+            "Could not retrieve action masks from Supersuit wrapper")
 
 
 def train():
     # 1. Instantiate the PettingZoo environment
-    # This environment supports 4-player Mahjong where agents play against each other.
     env = MahjongPettingZooEnv()
 
     # 2. Wrap it for Stable Baselines3 compatibility
-    # ss.pettingzoo_env_to_vec_env_v1 takes the Multi-Agent environment and
-    # "black-boxes" the agent switching, presenting it as a Vectorized Environment
-    # with num_envs = num_agents.
-    # This enables "Parameter Sharing": A single PPO policy learns to play for ALL 4 seats.
     env = ss.pettingzoo_env_to_vec_env_v1(env)
 
-    # 3. Concatenate environments (Vectorization)
-    # We run 1 instance of the game, but since it has 4 agents, SB3 sees 4 environments.
-    # concat_vec_envs_v1 ensures the output is a standard Gym VectorEnv.
-    # num_vec_envs=1 means we run 1 independent game (table) in parallel.
-    # Increasing this would run multiple tables at once for faster data collection.
-    env = ss.concat_vec_envs_v1(
-        env, num_vec_envs=1, num_cpus=1, base_class='stable_baselines3')
+    # 3. Adapt for MaskablePPO
+    env = SupersuitSB3Wrapper(env)
 
-    # Add a Monitor wrapper to track episode statistics (rewards, lengths)
+    # 4. Add a Monitor wrapper to track episode statistics
     env = VecMonitor(env)
 
     # 4. Define the PPO Model
