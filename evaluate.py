@@ -96,15 +96,36 @@ def evaluate_vs_random(model, num_episodes=10, render: bool = False):
             p0_wins += 1
 
         # ------------------------------------------------------------------
-        # Show winning player's hand, melds, and bonus tiles
+        # Summarize episode outcome
         # ------------------------------------------------------------------
-        # Winner is the agent with the highest final reward
+        print(f"\nEpisode {episode + 1} Result: ")
+        print(f"  - P0 Reward = {p0_reward}")
+
+        # If all rewards are equal (typically all zeros), treat as a true tie
+        reward_values = list(env.rewards.values())
+        if len(set(reward_values)) == 1:
+            print("  - Result: No winner (all players tied on reward/table score)")
+            print("  - Hand / Melds / Bonus: (showing Player 0 for reference)")
+            ref_player = env.game.players[env.agent_name_to_idx['player_0']]
+            hand_str = ", ".join(
+                str(t) for t in ref_player.hand) if ref_player.hand else "None"
+            melds = ref_player.gameState.melds
+            melds_str = ", ".join(str(m) for m in melds) if melds else "None"
+            bonus_str = ", ".join(str(
+                t) for t in ref_player.gameState.bonus_tiles) if ref_player.gameState.bonus_tiles else "None"
+            print(f"    Hand: {hand_str}")
+            print(f"    Melds: {melds_str}")
+            print(f"    Bonus: {bonus_str}")
+            print("  - Point Sources: None")
+            print(f"  - Final Table Score (P0): {ref_player.score}")
+            print("  - Win Records: None")
+            continue
+
+        # Otherwise, pick the actual winner by reward
         winner_agent = max(env.rewards, key=lambda a: env.rewards[a])
         winner_idx = env.agent_name_to_idx[winner_agent]
         winner_player = env.game.players[winner_idx]
 
-        print(f"\nEpisode {episode + 1} Result: ")
-        print(f"  - P0 Reward = {p0_reward}")
         print(f"  - Winning Player: {winner_agent} (seat {winner_idx})")
 
         # If we have win records, use the latest one to display the *actual*

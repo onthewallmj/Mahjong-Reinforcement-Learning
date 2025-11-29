@@ -53,14 +53,16 @@ class Meld:
 
         # All values must be integers and consecutive (e.g. 4,5,6)
         try:
-            values = sorted(int(t.value) for t in tiles)
+            # Sort tiles by numeric value so the meld is always in ascending order
+            tiles_sorted = sorted(tiles, key=lambda t: int(t.value))
+            values = [int(t.value) for t in tiles_sorted]
         except Exception as exc:  # pragma: no cover - defensive
             raise ValueError("Chow tiles must have integer values.") from exc
 
         if not (values[0] + 1 == values[1] and values[1] + 1 == values[2]):
             raise ValueError("Chow tiles must form a consecutive sequence.")
 
-        return Meld(tiles, MeldType.CHOW)
+        return Meld(tiles_sorted, MeldType.CHOW)
 
     @staticmethod
     def create_pong(tile1: Tile, tile2: Tile, tile3: Tile) -> 'Meld':
