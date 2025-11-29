@@ -5,40 +5,40 @@ class PointType(Enum):
     """
     Represents different types of point-scoring conditions or special hands in Mahjong.
     """
-    COMMON_HAND = 0
-    ALL_IN_TRIPLETS = 1
-    SEVER_PAIRS = 2
-    MIXED_ONE_SUIT = 3
-    ALL_ONE_SUIT = 4
-    ALL_HONOR_TILES = 5
-    SMALL_DRAGONS = 6
-    GREAT_DRAGONS = 7
-    SMALL_WINDS = 8
-    GREAT_WINDS = 9
-    THIRTEEN_ORPHANS = 10
-    ALL_KONGS = 11
-    SELF_TRIPLETS = 12
-    ORPHANS = 13
-    NINE_GATES = 14
-    SEAT_WIND = 15
-    PREVAILING_WIND = 16
-    RED_DRAGON = 17
-    GREEN_DRAGON = 18
-    WHITE_DRAGON = 19
-    MIXED_ORPHANS = 20
-    SELF_DRAW = 21
-    WIN_FROM_WALL = 22
-    ROBBING_KONG = 23
-    WIN_BY_LAST_CATCH = 24
-    WIN_BY_KONG = 25
-    WIN_BY_DOUBLE_KONG = 26
-    HEAVENLY_HAND = 27
-    EARTHLY_HAND = 28
-    NO_FLOWERS_OR_SEASONS = 29
-    FLOWER_OF_OWN_WIND = 30
-    SEASON_OF_OWN_WIND = 31
-    ALL_FLOWERS = 32
-    ALL_SEASONS = 33
+    COMMON_HAND = "Common Hand"
+    ALL_IN_TRIPLETS = "All in Triplets"
+    SEVER_PAIRS = "Sever Pairs"
+    MIXED_ONE_SUIT = "Mixed One Suit"
+    ALL_ONE_SUIT = "All One Suit"
+    ALL_HONOR_TILES = "All Honor Tiles"
+    SMALL_DRAGONS = "Small Dragons"
+    GREAT_DRAGONS = "Great Dragons"
+    SMALL_WINDS = "Small Winds"
+    GREAT_WINDS = "Great Winds"
+    THIRTEEN_ORPHANS = "Thirteen Orphans"
+    ALL_KONGS = "All Kongs"
+    SELF_TRIPLETS = "Self Triplets"
+    ORPHANS = "Orphans"
+    NINE_GATES = "Nine Gates"
+    SEAT_WIND = "Seat Wind"
+    PREVAILING_WIND = "Prevailing Wind"
+    RED_DRAGON = "Red Dragon"
+    GREEN_DRAGON = "Green Dragon"
+    WHITE_DRAGON = "White Dragon"
+    MIXED_ORPHANS = "Mixed Orphans"
+    SELF_DRAW = "Self Draw"
+    WIN_FROM_WALL = "Win From Wall"
+    ROBBING_KONG = "Robbing Kong"
+    WIN_BY_LAST_CATCH = "Win By Last Catch"
+    WIN_BY_KONG = "Win By Kong"
+    WIN_BY_DOUBLE_KONG = "Win By Double Kong"
+    HEAVENLY_HAND = "Heavenly Hand"
+    EARTHLY_HAND = "Earthly Hand"
+    NO_FLOWERS_OR_SEASONS = "No Flowers Or Seasons"
+    FLOWER_OF_OWN_WIND = "Flower Of Own Wind"
+    SEASON_OF_OWN_WIND = "Season Of Own Wind"
+    ALL_FLOWERS = "All Flowers"
+    ALL_SEASONS = "All Seasons"
 
 
 class PointSource:
@@ -188,3 +188,6 @@ class PointSource:
     @staticmethod
     def all_seasons() -> "PointSource":
         return PointSource(PointType.ALL_SEASONS, 2)
+
+    def __repr__(self) -> str:
+        return self.point_type.value

@@ -196,7 +196,23 @@ class MahjongPettingZooEnv(ParallelEnv):
             self.game.step()
 
     def _assign_final_rewards(self):
+        """
+        Assign final tournament-style rewards based on table scores.
+
+        Note: If all players have the same score (e.g. 0 for a full-draw rotation),
+        we treat it as a true tie and give everyone 0 reward instead of arbitrarily
+        assigning +100 to player_0, +50 to player_1, etc.
+        """
         scores = [(i, p.score) for i, p in enumerate(self.game.players)]
+
+        # If all scores are equal, treat as full tie → zero reward for everyone
+        unique_scores = {s for _, s in scores}
+        if len(unique_scores) == 1:
+            for agent_name in self.possible_agents:
+                self.rewards[agent_name] = 0.0
+            return
+
+        # Otherwise, rank by score and assign tournament rewards
         scores.sort(key=lambda x: x[1], reverse=True)
         rank_rewards = [100, 50, -50, -100]
         for rank, (agent_idx, score) in enumerate(scores):

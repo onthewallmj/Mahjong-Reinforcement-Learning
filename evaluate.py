@@ -1,5 +1,6 @@
 import argparse
 import os
+import time
 
 from mahjong.pettingzoo_env import MahjongPettingZooEnv
 import numpy as np
@@ -9,7 +10,7 @@ import supersuit as ss
 from train import SupersuitSB3Wrapper
 
 
-def evaluate_vs_random(model, num_episodes=10):
+def evaluate_vs_random(model, num_episodes=10, render: bool = False):
     """
     Evaluates the Trained Agent (Player 0) against 3 Random Bots.
     Uses the raw PettingZoo environment to allow different policies per agent.
@@ -38,6 +39,11 @@ def evaluate_vs_random(model, num_episodes=10):
         spinner = ['|', '/', '-', '\\']
 
         while not all(terminations.values()) and not all(truncations.values()):
+            # Optional: render the current state so we can "watch" the game
+            if render:
+                env.render()
+                # Small delay so the output is readable as a sequence, not a blur
+                time.sleep(0.2)
             actions = {}
 
             # Decide actions for all agents who need to act
@@ -89,7 +95,108 @@ def evaluate_vs_random(model, num_episodes=10):
         if p0_reward > 0:
             p0_wins += 1
 
-        print(f"\nEpisode {episode + 1} Result: P0 Reward = {p0_reward}")
+        # ------------------------------------------------------------------
+        # Show winning player's hand, melds, and bonus tiles
+        # ------------------------------------------------------------------
+        # Winner is the agent with the highest final reward
+        winner_agent = max(env.rewards, key=lambda a: env.rewards[a])
+        winner_idx = env.agent_name_to_idx[winner_agent]
+        winner_player = env.game.players[winner_idx]
+
+        print(f"\nEpisode {episode + 1} Result: ")
+        print(f"  - P0 Reward = {p0_reward}")
+        print(f"  - Winning Player: {winner_agent} (seat {winner_idx})")
+
+        # If we have win records, use the latest one to display the *actual*
+        # winning hand snapshot at the time of win, instead of the mutated
+        # hand at the end of the rotation.
+        # ------------------------------------------------------------------
+        # Hand + Melds + Bonus Tiles (single summary line)
+        # ------------------------------------------------------------------
+        if winner_player.wins:
+            last_win = winner_player.wins[-1]
+            # Reconstruct the full winning hand as: standing tiles at win time + winning tile
+            winning_hand_tiles = list(last_win.hand_tiles)
+            if last_win.winning_tile is not None:
+                winning_tiles_full = winning_hand_tiles + \
+                    [last_win.winning_tile]
+            else:
+                winning_tiles_full = winning_hand_tiles
+        else:
+            # Fallback: use current hand if no WinRecord is found
+            winning_tiles_full = list(winner_player.hand)
+
+        hand_str = ", ".join(
+            str(t) for t in winning_tiles_full) if winning_tiles_full else "None"
+
+        # Melds (current melds, usually stable after the win)
+        melds = winner_player.gameState.melds
+        melds_str = ", ".join(str(m) for m in melds) if melds else "None"
+
+        # Bonus tiles from the win snapshot if available, else current
+        if winner_player.wins:
+            bonus_tiles = winner_player.wins[-1].bonus_tiles
+        else:
+            bonus_tiles = winner_player.gameState.bonus_tiles
+        bonus_str = ", ".join(str(t)
+                              for t in bonus_tiles) if bonus_tiles else "None"
+
+        print("  - Hand / Melds / Bonus:")
+        print(f"    Hand: {hand_str}")
+        print(f"    Melds: {melds_str}")
+        print(f"    Bonus: {bonus_str}")
+
+        # Point sources (how the hand scored its points: fan/han breakdown)
+        if winner_player.wins:
+            point_sources = winner_player.wins[-1].point_sources
+            if point_sources:
+                # Show each point source with its name and numeric value
+                lines = [
+                    f"    - {ps.point_type.value} ({ps.value} pt)"
+                    for ps in point_sources
+                ]
+                print("  - Point Sources:")
+                print("\n".join(lines))
+            else:
+                print("  - Point Sources: None")
+
+        # Final table score and win records for the winning player
+        print(f"  - Final Table Score: {winner_player.score}")
+        if winner_player.wins:
+            print("  - Win Records:")
+            for i, win in enumerate(winner_player.wins, start=1):
+                src = (
+                    f"from discard by player {win.win_from_player_id}"
+                    if win.win_from_player_id is not None
+                    else "self-draw / wall"
+                )
+                # Compact hand + winning tile view for this specific win
+                hand_tiles = list(win.hand_tiles)
+                if win.winning_tile is not None:
+                    hand_tiles_full = hand_tiles + [win.winning_tile]
+                else:
+                    hand_tiles_full = hand_tiles
+                hand_str = ", ".join(str(t) for t in hand_tiles_full)
+
+                print(f"    Win {i}:")
+                print(
+                    f"      tile={win.winning_tile}, "
+                    f"points={win.points}, score={win.score}, {src}"
+                )
+                print(f"      hand_tiles: {hand_str}")
+
+                # Per-win point sources (can differ between multiple wins)
+                if win.point_sources:
+                    ps_lines = [
+                        f"        - {ps.point_type.value} ({ps.value} pt)"
+                        for ps in win.point_sources
+                    ]
+                    print("      point_sources:")
+                    print("\n".join(ps_lines))
+                else:
+                    print("      point_sources: None")
+        else:
+            print("  - Win Records: None")
 
     win_rate = (p0_wins / num_episodes) * 100
     avg_reward = p0_total_reward / num_episodes
@@ -103,7 +210,7 @@ def evaluate_vs_random(model, num_episodes=10):
     print("="*30)
 
 
-def evaluate_agent(model_path=None, num_episodes=10, vs_random=False):
+def evaluate_agent(model_path=None, num_episodes=10, vs_random: bool = False, render: bool = False):
     """
     Entry point for evaluation.
 
@@ -133,7 +240,7 @@ def evaluate_agent(model_path=None, num_episodes=10, vs_random=False):
         print("No model provided or found. Using Random Agent.")
 
     if vs_random and model:
-        evaluate_vs_random(model, num_episodes)
+        evaluate_vs_random(model, num_episodes, render=render)
         return
 
     # Metrics
@@ -225,11 +332,27 @@ if __name__ == "__main__":
     model_file = "mahjong_ppo_model"
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--episodes", type=int, default=5,
-                        help="Number of episodes")
-    parser.add_argument("--vs-random", action="store_true",
-                        help="Play against random bots instead of self-play")
+    parser.add_argument(
+        "--episodes",
+        type=int,
+        default=5,
+        help="Number of episodes",
+    )
+    parser.add_argument(
+        "--vs-random",
+        action="store_true",
+        help="Play against random bots instead of self-play",
+    )
+    parser.add_argument(
+        "--render",
+        action="store_true",
+        help="Render each step (text output) so you can visualize the agent's play",
+    )
     args = parser.parse_args()
 
-    evaluate_agent(model_path=model_file,
-                   num_episodes=args.episodes, vs_random=args.vs_random)
+    evaluate_agent(
+        model_path=model_file,
+        num_episodes=args.episodes,
+        vs_random=args.vs_random,
+        render=args.render,
+    )
