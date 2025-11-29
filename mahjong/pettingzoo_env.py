@@ -67,7 +67,13 @@ class MahjongPettingZooEnv(ParallelEnv):
         self._advance_to_next_decision()
         
         observations = {a: self.observe(a) for a in self.agents}
+        
+        # Populate infos with action masks immediately
         infos = {a: {} for a in self.agents}
+        action_masks = self.action_mask()
+        for agent in self.agents:
+             infos[agent]["action_mask"] = action_masks[agent]
+             
         return observations, infos
 
     def step(self, actions):
