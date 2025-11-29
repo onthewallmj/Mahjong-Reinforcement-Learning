@@ -1,171 +1,86 @@
-# Mahjong Reinforcement Learning Environment
+# 🀄 Mahjong AI (Reinforcement Learning)
 
-A Python-based simulation environment for Mahjong (Hong Kong Old Style variants), designed for Multi-Agent Reinforcement Learning (MARL). This project implements the core mechanics of Mahjong, including tile dealing, meld mechanics (Pong, Kong, Chow), scoring, and game flow management, wrapped in standard RL interfaces (Gymnasium and PettingZoo).
+A project to teach a computer how to play Hong Kong Style Mahjong using Artificial Intelligence.
 
-## Project Structure
+Imagine training a dog: you give it a treat when it does something right (like sitting) and ignore it (or say "no") when it does something wrong. We do the same here: we let the AI play thousands of games, and every time it wins a hand or the tournament, we give it "points" (rewards). Over time, it learns which moves lead to points.
 
--   **`train.py`**: Script to train a PPO agent using `MaskablePPO` (from `sb3-contrib`) and the PettingZoo environment.
--   **`train_curriculum.py`**: Advanced training script using a 2-phase curriculum (Bots -> Self-Play).
--   **`evaluate.py`**: Script to benchmark a trained agent against bots or in self-play.
--   **`main.py`**: A standalone simulation runner for testing the game logic without RL overhead.
--   **`mahjong/`**: Package containing the core game logic and RL wrappers.
-    -   **`pettingzoo_env.py`**: PettingZoo Parallel Environment for 4-player self-play training. Implements Action Masking.
-    -   **`envs/vs_bot_env.py`**: Gymnasium wrapper for Single-Agent vs Heuristic Bots.
-    -   **`agents/heuristic_agent.py`**: Rule-based bot logic.
-    -   **`feature_extractor.py`**: Custom 1D CNN for feature extraction.
-    -   **`game.py`**: Manages the game state machine, turn logic, and rules.
-    -   **`player.py`**: Defines the `Player` class and decision interfaces.
-    -   **`observation.py`**: Encodes the game state into a (33, 34) tensor for Neural Networks.
-    -   **`action_space.py`**: Defines the discrete action space (0-41).
-    -   **`hand_scorer.py`**: Implements scoring logic and win condition checks.
+This project uses advanced techniques like **Multi-Agent Reinforcement Learning (MARL)** (where 4 AIs play against each other to get smarter) and **Deep Learning** (using a brain-like network to "see" the board).
 
-## System Architecture & Concepts
+---
 
-### 1. Environment Frameworks
+## 🚀 Quick Start
 
-This project utilizes two distinct frameworks to support different training paradigms:
-
--   **PettingZoo (`mahjong/pettingzoo_env.py`)**:
-    -   **Purpose**: Multi-Agent RL (MARL).
-    -   **Setup**: The RL policy controls **all 4 players** simultaneously.
-    -   **Use Case**: Self-play training. This allows the agent to learn advanced strategies by playing against copies of itself, creating an "arms race" of capability. We use the `ParallelEnv` API for compatibility with high-performance vectorization tools.
-
-### 2. Neural Network Architecture (Custom CNN)
-
-The project utilizes a specialized Deep Learning architecture designed to capture the spatial dependencies of Mahjong tiles:
-
--   **Custom Feature Extractor**: A 1D Convolutional Neural Network (ResNet-like).
-    -   **Input**: `(33, 34)` Tensor.
-    -   **Architecture**: 3 layers of `Conv1d` (kernel size 3) with ReLU activations and Batch Normalization.
-    -   **Purpose**: The `Conv1d` layers scan across the 34 tile types to detect **Sequences** (Chows) and **Triplets** (Pongs) regardless of their suit, mimicking how human players recognize patterns.
--   **Policy Network**: `MaskablePPO` with an MLP head on top of the extracted features.
-
-### 3. State Representation (Observation Space)
-
-The complex game state is encoded into a **`(33, 34)` floating-point tensor**, optimized for the CNN to process:
-
--   **Dimensions**: 33 Feature Channels × 34 Unique Tile Types.
--   **34 Columns**: Represent the 34 distinct tiles (Characters 1-9, Bamboo 1-9, Dots 1-9, Winds E/S/W/N, Dragons R/G/W).
--   **33 Channels**: Binary planes capturing specific information, such as:
-    -   **Hand Composition**: Which tiles are currently in the agent's hand (one-hot encoded for count).
-    -   **Public Information**: Open Melds (Pong/Kong/Chow) of all players.
-    -   **Discard History**: What has been played on the table (crucial for defensive play).
-    -   **Game Context**: Dealer status, current Table Wind, and "Riichi" status (Tenpai).
-
-### 4. Decision Making (Action Space)
-
-The agent interacts with the game via **42 Discrete Actions**:
-
--   **Actions 0-33 (Discard)**: Discard a specific tile corresponding to the 34 tile types.
--   **Action 34 (Skip)**: Pass priority (decline to call Chow/Pong/Kong).
--   **Actions 35-41 (Declarations)**: Specific calls for Chow (Low/Mid/High), Pong, Kong, Self-Kong, and Win.
-
-**Action Masking**: The environment calculates a validity mask at every step. This prevents the agent from making illegal moves (e.g., discarding a tile it doesn't hold), significantly speeding up the learning process. We use `MaskablePPO` to leverage this.
-
-### 5. Multi-Agent Reinforcement Learning (MARL)
-
--   **Self-Play with Parameter Sharing**: The training script (`train.py`) uses a single Neural Network (PPO Policy) to control **all 4 players**. The AI learns by playing against copies of itself, evolving from random moves to strategic play.
--   **Full Rotation Episodes**: A Mahjong match isn't just one hand. The environment simulates a **Full Rotation** (East Round → South Round → West Round → North Round), comprising 16+ individual hands. This forces the agent to consider long-term score preservation.
-
-### 6. Reward Structure
-
-The environment utilizes a combination of **Dense Intermediate Rewards** and **Sparse Tournament Rewards** to balance immediate feedback with long-term strategic goals.
-
--   **Dense Intermediate Rewards (Per Hand)**:
-    -   **Winning a Hand (Win)**: `+10.0`. Awarded immediately to the winner of any hand.
-    -   **Dealing In (Penalty)**: `-10.0`. Applied to the player who discards the winning tile (feeding the winner).
-    -   **Other Players**: `0`.
-
--   **Sparse Tournament Rewards (Per Game Rotation)**:
-    At the end of the full table rotation (East → North), players are ranked by their total accumulated score.
-    -   **1st Place**: `+100`
-    -   **2nd Place**: `+50`
-    -   **3rd Place**: `-50`
-    -   **4th Place**: `-100`
-
-### 7. Curriculum Learning Strategy
-
-To bootstrap the agent's learning, we employ a two-phase curriculum:
-
-1.  **Phase 1: Rule-Based Training**:
-    -   The agent trains against 3 **Heuristic Bots** (`mahjong/agents/heuristic_agent.py`).
-    -   These bots follow basic strategies (discard isolated winds/terminals, win when able), providing a stable baseline for the agent to learn the rules and basic hand composition.
-    -   Run via `train_curriculum.py`.
-
-2.  **Phase 2: Self-Play Fine-Tuning**:
-    -   The trained model from Phase 1 is loaded into the Multi-Agent Self-Play environment.
-    -   The agent plays against copies of itself to discover advanced strategies that exploit the specific dynamics of high-level play.
-
-## Usage
-
-### Training
-
-#### Curriculum Learning (Recommended)
-To train using the 2-phase curriculum (Bots -> Self-Play):
-```bash
-python train_curriculum.py
-```
-This is the standard way to train a strong agent. Logs are saved to `./mahjong_curriculum_logs/`.
-
-#### Standard Self-Play (From Scratch)
-To train from scratch using only self-play:
-```bash
-python train.py
-```
-
-### Evaluation
-
-To evaluate a trained agent (or a random agent if no model is found):
-
-```bash
-python evaluate.py --episodes 100 --vs-random
-```
--   `--episodes`: Number of games to play.
--   `--vs-random`: If set, plays against 3 random bots. If omitted, runs self-play evaluation.
-
-### Visualization (TensorBoard)
-
-To view training progress (rewards, losses):
-
-```bash
-tensorboard --logdir ./mahjong_curriculum_logs/
-```
-Open the link (usually `http://localhost:6006`) in your browser.
-
-### Running a Simulation (No RL)
-
-To see the game logic in action with random moves:
-
-```bash
-python main.py
-```
-
-## Installation
-
-Install the required dependencies:
-
+### 1. Install Dependencies
+First, make sure you have Python installed. Then run:
 ```bash
 pip install -r requirements.txt
 ```
 
-Dependencies include:
--   `numpy`
--   `gymnasium`
--   `pettingzoo`
--   `stable-baselines3`
--   `sb3-contrib` (for MaskablePPO)
--   `supersuit`
--   `tensorboard`
--   `shimmy`
+### 2. Train the AI (The "School")
+We use a **Curriculum** strategy, like sending a kid to school:
+-   **Phase 1 (Elementary School)**: The AI plays against simple bots to learn the basic rules (how to form sets, how to win).
+-   **Phase 2 (University)**: The AI plays against itself (Self-Play) to learn advanced strategies and bluffing.
+
+Run the training with:
+```bash
+python train_curriculum.py
+```
+*This will take a while! You can watch the progress using TensorBoard (see below).*
+
+### 3. Watch it Play
+Once trained, you can see how good it is by making it play 100 games against random players:
+```bash
+python evaluate.py --episodes 100 --vs-random
+```
+
+---
+
+## 🧠 How It Works (Simplified)
+
+### The "Brain" (Neural Network)
+Think of the AI's brain as a pair of special glasses that looks at the Mahjong table.
+-   **Standard AI**: Sees the table as a boring list of numbers.
+-   **Our AI (CNN)**: Uses a **Convolutional Neural Network**. It scans the tiles like a human does, looking for patterns: *"Oh, I have a 1-2-3 Bamboo sequence here!"* or *"I have three Red Dragons there!"*.
+
+### The "Referee" (Action Masking)
+In Mahjong, you can't just do anything. You can't declare a win if you don't have a winning hand.
+-   To help the AI learn faster, we have a built-in "Referee" (Action Masking).
+-   If the AI tries to make an illegal move (like discarding a tile it doesn't have), the Referee blocks it immediately. This forces the AI to only think about *valid* moves.
+
+### The "Scoreboard" (Rewards)
+How does the AI know if it's doing well? We give it points:
+-   **+10 Points**: For winning a single hand (Ron/Tsumo).
+-   **-10 Points**: For dealing into someone else's win (feeding the winner).
+-   **+100 Points**: For winning the entire tournament (4 rounds).
+
+This mix encourages the AI to win hands quickly but also play defensively to win the long game.
+
+---
+
+## 📂 Project Structure for Techies
+
+-   **`train_curriculum.py`**: The main script to run the 2-phase training.
+-   **`mahjong/`**: The core game engine.
+    -   **`game.py`**: The rulebook. Handles turns, drawing, and discarding.
+    -   **`pettingzoo_env.py`**: The "gym" where 4 agents play together.
+    -   **`feature_extractor.py`**: The CNN "glasses" code.
+    -   **`agents/heuristic_agent.py`**: The simple bots used in Phase 1.
+
+---
+
+## 📊 Visualization
+
+Want to see graphs of the AI getting smarter?
+```bash
+tensorboard --logdir ./mahjong_curriculum_logs/
+```
+Open the link it gives you (usually `http://localhost:6006`) in your browser. You should see the "Average Reward" line going up over time!
+
+---
 
 ## Development Status
 
--   [x] Core Game Logic & Scoring
--   [x] RL Observation & Action Space
--   [x] Gymnasium Wrapper (Single Agent)
--   [x] PettingZoo Wrapper (Multi-Agent)
--   [x] Action Masking (Discard Phase)
--   [x] Training Pipeline (PPO)
--   [x] Custom CNN Feature Extractor
--   [x] Curriculum Learning (Bots -> Self-Play)
--   [ ] **Advanced Action Masking**: Currently, agents control Discards. Reaction logic (deciding to Chow/Pong/Kong) uses heuristics or is skipped. Implementing full agent control for reactions is the next major milestone.
+-   [x] **Core Game Engine**: Dealing, turns, winning logic.
+-   [x] **The "Brain"**: Custom CNN to recognize tile patterns.
+-   [x] **The "School"**: Curriculum training (Bots -> Self-Play).
+-   [ ] **Advanced Reactions**: Currently, the AI is great at deciding what to *discard*. The next step is teaching it exactly when to call *Pong*, *Kong*, or *Chow* (currently it uses simple rules for this).
