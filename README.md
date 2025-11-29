@@ -26,9 +26,19 @@ This project utilizes two distinct frameworks to support different training para
     -   **Setup**: The RL policy controls **all 4 players** simultaneously.
     -   **Use Case**: Self-play training. This allows the agent to learn advanced strategies by playing against copies of itself, creating an "arms race" of capability. We use the `ParallelEnv` API for compatibility with high-performance vectorization tools.
 
-### 2. State Representation (Observation Space)
+### 2. Neural Network Architecture (Custom CNN)
 
-The complex game state is encoded into a **`(33, 34)` floating-point tensor**, optimized for neural networks (like CNNs) to process:
+The project utilizes a specialized Deep Learning architecture designed to capture the spatial dependencies of Mahjong tiles:
+
+-   **Custom Feature Extractor**: A 1D Convolutional Neural Network (ResNet-like).
+    -   **Input**: `(33, 34)` Tensor.
+    -   **Architecture**: 3 layers of `Conv1d` (kernel size 3) with ReLU activations and Batch Normalization.
+    -   **Purpose**: The `Conv1d` layers scan across the 34 tile types to detect **Sequences** (Chows) and **Triplets** (Pongs) regardless of their suit, mimicking how human players recognize patterns.
+-   **Policy Network**: `MaskablePPO` with an MLP head on top of the extracted features.
+
+### 3. State Representation (Observation Space)
+
+The complex game state is encoded into a **`(33, 34)` floating-point tensor**, optimized for the CNN to process:
 
 -   **Dimensions**: 33 Feature Channels × 34 Unique Tile Types.
 -   **34 Columns**: Represent the 34 distinct tiles (Characters 1-9, Bamboo 1-9, Dots 1-9, Winds E/S/W/N, Dragons R/G/W).

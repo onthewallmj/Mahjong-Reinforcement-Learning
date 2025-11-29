@@ -1,5 +1,6 @@
 import gymnasium as gym
 from mahjong.pettingzoo_env import MahjongPettingZooEnv
+from mahjong.feature_extractor import MahjongFeatureExtractor
 from sb3_contrib import MaskablePPO
 from stable_baselines3.common.vec_env import DummyVecEnv, VecMonitor, VecEnvWrapper
 import supersuit as ss
@@ -83,10 +84,14 @@ def train():
     env = VecMonitor(env)
 
     # 4. Define the PPO Model
-    # We use a Multi-Layer Perceptron (MlpPolicy) because our observation is a flat matrix/tensor.
-    # - n_steps=2048: Number of steps to run for each environment per update.
-    # - batch_size=64: Minibatch size for gradient updates.
-    # - ent_coef=0.01: Entropy coefficient to encourage exploration (crucial for sparse rewards).
+    # We use a Multi-Layer Perceptron (MlpPolicy) as the base, but we inject a custom
+    # Feature Extractor (CNN) to handle the spatial structure of the tiles.
+    
+    policy_kwargs = dict(
+        features_extractor_class=MahjongFeatureExtractor,
+        features_extractor_kwargs=dict(features_dim=256),
+    )
+
     model = MaskablePPO(
         "MlpPolicy",
         env,
@@ -95,7 +100,8 @@ def train():
         n_steps=2048,
         batch_size=64,
         gamma=0.99,
-        ent_coef=0.01
+        ent_coef=0.01,
+        policy_kwargs=policy_kwargs
     )
 
     print("Starting training...")
