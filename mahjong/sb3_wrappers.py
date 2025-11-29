@@ -63,6 +63,5 @@ class SupersuitSB3Wrapper(VecEnvWrapper):
         if hasattr(self.venv, "par_env"):
             masks_dict = self.venv.par_env.action_mask()
             return [masks_dict[agent] for agent in self.venv.par_env.possible_agents]
-        raise NotImplementedError("Could not retrieve action masks from Supersuit wrapper")
-
-
+        raise NotImplementedError(
+            "Could not retrieve action masks from Supersuit wrapper")
