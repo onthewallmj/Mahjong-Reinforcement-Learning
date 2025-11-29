@@ -6,7 +6,7 @@ import supersuit as ss
 from mahjong.envs.vs_bot_env import MahjongVsBotEnv
 from mahjong.pettingzoo_env import MahjongPettingZooEnv
 from mahjong.feature_extractor import MahjongFeatureExtractor
-from train import SupersuitSB3Wrapper
+from mahjong.sb3_wrappers import SupersuitSB3Wrapper
 
 def train_curriculum():
     """

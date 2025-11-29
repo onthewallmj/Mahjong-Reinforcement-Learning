@@ -7,7 +7,7 @@ import numpy as np
 from sb3_contrib import MaskablePPO
 from stable_baselines3 import PPO
 import supersuit as ss
-from train import SupersuitSB3Wrapper
+from mahjong.sb3_wrappers import SupersuitSB3Wrapper
 
 
 def evaluate_vs_random(model, num_episodes=10, render: bool = False):
