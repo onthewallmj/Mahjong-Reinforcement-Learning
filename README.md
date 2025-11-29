@@ -4,15 +4,15 @@ A Python-based simulation environment for Mahjong (Hong Kong Old Style variants)
 
 ## Project Structure
 
--   **`train.py`**: Script to train a PPO agent using Stable Baselines3 and the PettingZoo environment.
+-   **`train.py`**: Script to train a PPO agent using `MaskablePPO` (from `sb3-contrib`) and the PettingZoo environment.
 -   **`main.py`**: A standalone simulation runner for testing the game logic without RL overhead.
--   **`evaluate.py`**: Script to benchmark a trained agent against bots.
+-   **`evaluate.py`**: Script to benchmark a trained agent against bots or in self-play.
 -   **`mahjong/`**: Package containing the core game logic and RL wrappers.
-    -   **`pettingzoo_env.py`**: **(New)** PettingZoo Parallel Environment for 4-player self-play training.
-    -   **`game.py`**: Manages the game state machine, turn logic, and rules. Refactored to support step-wise execution for RL.
+    -   **`pettingzoo_env.py`**: PettingZoo Parallel Environment for 4-player self-play training. Implements Action Masking.
+    -   **`game.py`**: Manages the game state machine, turn logic, and rules.
     -   **`player.py`**: Defines the `Player` class and decision interfaces.
-    -   **`observation.py`**: **(New)** Encodes the game state into a (33, 34) tensor for Neural Networks.
-    -   **`action_space.py`**: **(New)** Defines the discrete action space (0-41).
+    -   **`observation.py`**: Encodes the game state into a (33, 34) tensor for Neural Networks.
+    -   **`action_space.py`**: Defines the discrete action space (0-41).
     -   **`hand_scorer.py`**: Implements scoring logic and win condition checks.
 
 ## System Architecture & Concepts
@@ -46,7 +46,7 @@ The agent interacts with the game via **42 Discrete Actions**:
 -   **Action 34 (Skip)**: Pass priority (decline to call Chow/Pong/Kong).
 -   **Actions 35-41 (Declarations)**: Specific calls for Chow (Low/Mid/High), Pong, Kong, Self-Kong, and Win.
 
-**Action Masking**: The environment calculates a validity mask at every step. This prevents the agent from making illegal moves (e.g., discarding a tile it doesn't hold), significantly speeding up the learning process.
+**Action Masking**: The environment calculates a validity mask at every step. This prevents the agent from making illegal moves (e.g., discarding a tile it doesn't hold), significantly speeding up the learning process. We use `MaskablePPO` to leverage this.
 
 ### 4. Multi-Agent Reinforcement Learning (MARL)
 
@@ -81,7 +81,7 @@ This script will:
 
 1.  Initialize the `MahjongPettingZooEnv`.
 2.  Wrap it using `SuperSuit` to vectorize the 4-player parallel environment.
-3.  Train a PPO agent via `Stable Baselines3`.
+3.  Train a `MaskablePPO` agent via `sb3-contrib` to enforce legal moves.
 4.  Save the trained model to `mahjong_ppo_model.zip`.
 
 ### Evaluation
@@ -116,6 +116,7 @@ Dependencies include:
 -   `gymnasium`
 -   `pettingzoo`
 -   `stable-baselines3`
+-   `sb3-contrib` (for MaskablePPO)
 -   `supersuit`
 
 ## Development Status

@@ -117,10 +117,10 @@ class MahjongPettingZooEnv(ParallelEnv):
         truncations = {a: False for a in self.agents}
         infos = {a: {} for a in self.agents}
         
-        # Add Action Mask to info?
-        # Usually useful for RL.
-        # Only the current agent has a valid mask. Others are all False?
-        # Or just always return mask based on hand.
+        # Add Action Mask to info
+        action_masks = self.action_mask()
+        for agent in self.agents:
+             infos[agent]["action_mask"] = action_masks[agent]
         
         return observations, rewards, terminations, truncations, infos
 
@@ -132,12 +132,24 @@ class MahjongPettingZooEnv(ParallelEnv):
         """
         while True:
             if self.game.phase == Phase.GAME_OVER:
+                # IMPORTANT: We must finalize the game to update history and dealer rotation
+                # before checking for episode end or re-initializing.
+                self.game.finalize_game(self.game.winner_seat_index)
+
                 # Check for Rotation End logic (Same as before)
                 last_game_entry = self.game.history[-1] if self.game.history else None
+                
+                # DEBUG: Print state before re-init
+                # print(f"Game Over. History Len: {len(self.game.history)}. Last Wind: {last_game_entry.table_wind if last_game_entry else 'None'}")
+
                 self.game.initialize_game()
                 
-                if self.game.table_wind == self.game.table_wind.EAST and \
-                   last_game_entry and last_game_entry.table_wind == self.game.table_wind.NORTH:
+                # DEBUG: Print state after re-init
+                # print(f"New Wind: {self.game.table_wind}")
+
+                # Use .value for safer comparison of Enums
+                if self.game.table_wind.value == self.game.table_wind.EAST.value and \
+                   last_game_entry and last_game_entry.table_wind.value == self.game.table_wind.NORTH.value:
                     self.game.phase = Phase.GAME_OVER
                     return
                 continue
@@ -162,6 +174,37 @@ class MahjongPettingZooEnv(ParallelEnv):
                 if tile.get_index_34() == action_idx:
                     return tile
         return None
+
+    def action_mask(self):
+        """
+        Returns a dictionary of boolean masks for each agent.
+        Only valid discard actions are True.
+        """
+        masks = {}
+        for agent in self.agents:
+            agent_idx = self.agent_name_to_idx[agent]
+            # Get player object
+            player = self.game.players[agent_idx]
+            
+            # Mask is size 34 (ActionSpace.SIZE)
+            mask = np.zeros(ActionSpace.SIZE, dtype=bool)
+            
+            # If player is active and needs to discard, mark tiles in hand as True
+            # But we generate mask for ALL agents always? Or just active?
+            # SB3 usually needs mask for the agent being queried.
+            # In vectorized env, we return masks for all?
+            
+            # For now, just mark tiles present in hand as valid.
+            # Even if it's not their turn, this is the "valid action space" given their state.
+            # If it IS their turn, they must pick one of these.
+            for tile in player.hand:
+                idx = tile.get_index_34()
+                if idx < 34:
+                    mask[idx] = True
+            
+            masks[agent] = mask
+            
+        return masks
 
     def observe(self, agent):
         agent_idx = self.agent_name_to_idx[agent]

@@ -1,6 +1,6 @@
 import gymnasium as gym
 from mahjong.pettingzoo_env import MahjongPettingZooEnv
-from stable_baselines3 import PPO
+from sb3_contrib import MaskablePPO
 from stable_baselines3.common.vec_env import DummyVecEnv, VecMonitor
 import supersuit as ss
 
@@ -33,7 +33,7 @@ def train():
     # - n_steps=2048: Number of steps to run for each environment per update.
     # - batch_size=64: Minibatch size for gradient updates.
     # - ent_coef=0.01: Entropy coefficient to encourage exploration (crucial for sparse rewards).
-    model = PPO(
+    model = MaskablePPO(
         "MlpPolicy",
         env,
         verbose=1,
